@@ -1,0 +1,94 @@
+\documentclass{article}
+\usepackage{times}
+\usepackage{fullpage}
+
+\newcommand{\head}{\subsection*}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+%_______________________________________________________________________________
+% Heading section
+%_______________________________________________________________________________
+\begin{center}
+\rule{\textwidth}{1.5pt} \\ \rule[10pt]{\textwidth}{1pt}\\
+CMU 17-651\hfill Models of Software Systems\\[3ex]
+{\Large\bf Project 2: Concurrency}\\[3ex]
+Garlan \& Kang \hfill {\bf Due: November 14, 2018} \rule{\textwidth}{1pt}
+\\\rule[9.5pt]{\textwidth}{1.5pt}
+\end{center}
+
+The purpose of this second project is to give you experience in
+modeling a realistic system as a state machine using concurrency.
+The example that we will use is the familiar Infusion Pump.
+A general description of an Infusion Pump and a variety of documents describing 
+failures of real infusion pump systems can be found in the
+Infusion Pump Documents Module on the class website. The key
+ideas that we would like you to get out of this project are: (1) the
+use of concurrency to manage complexity, separate concerns, model
+reality; (2) checking of properties related to concurrency (safety
+and liveness); and (3) additional practice in creating appropriately
+abstract models.
+
+\bigskip You should carry out this project in your assigned team. Make sure that everyone in the
+group contributes to the overall effort. Each team should submit a single write-up of the project,
+due at the beginning of class on the project due date. We have posted a template for a group
+project write-up under the Latex section of the course web site.
+
+\bigskip To give you a head start, we are including a very simple model of an infusion pump, which you may want to use as a starting point for your modeling effort. 
+
+%___________________________________________________________________________________________________
+\head{Task 1 (50 points): Modeling with Concurrency}
+%___________________________________________________________________________________________________
+
+Model a 2-line infusion pump in FSP, using concurrency to factor the model into parts that
+represent different concerns. Possibilities for separation include things like (a) power system (b) an individual line (c) alarms (d) user interface for setting of the pump (both initially and during operation).
+
+\bigskip
+
+As always, you will need to pick a level of abstraction appropriate for this model, and it is up to
+you to figure out what are the significant aspects of the system that should be included in your
+model.
+
+%___________________________________________________________________________________________________
+\head{Task 2 (32 points): Stating and Checking Properties}
+%___________________________________________________________________________________________________
+
+Once you have your pump specified, consider the following properties. For each say (a) whether the property
+is a safety or liveness property,  (b) whether your model allows you to check this property, and if
+so, (c) whether it is true or not, and what features of FSP and LTSA allowed you to check the
+property. It would be particularly helpful if you include in your write-up the specific checks that you performed -- which should also appear in your FSP file. (Note: not all of these properties have to be true of your pump, depending on how you interpret the requirements for an infusion pump.)
+
+\begin{enumerate}
+    \item The pump cannot start pumping without the operator first confirming the settings on the pump.
+    \item Electrical power can fail at any time.
+    \item If the backup battery power fails, pumping will not occur on any line.
+    \item It is always possible to resume pumping after a failure.
+    \item An alarm will sound on any line failure (blockage, pinching, empty fluid, or
+whatever failures you model).
+    \item In the absence of errors the pump will continue to pump until the
+treatment is finished.
+    \item The system never deadlocks.
+    \item Property A of your choosing.
+    \item Property B of your choosing
+\end{enumerate}
+
+%___________________________________________________________________________________________________
+\head{Task 3 (18 points): Reflection}
+%___________________________________________________________________________________________________
+
+ You have now seen several notations for specifying systems and their properties: Pre-post conditions,
+ Alloy, and FSP (LTSA).  In this part of the report we would like you to reflect on that experience.
+ For each of these notations write a paragraph or two explaining:
+\begin{enumerate}
+ \item What are the strengths of this notation and its tools?  Under what situations would you
+recommend its use? Why?
+ \item What are the weaknesses of this notation and its tools. Under what
+situations would you not recommend its use? Why?
+ \item With respect to this notation, what is
+the single most-important future development that would be needed to make it more generally useful
+to practitioners?
+
+\end{enumerate}
+
+\end{document}
