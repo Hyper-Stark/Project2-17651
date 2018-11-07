@@ -73,14 +73,6 @@ range QuietModes = QuietModeOff..QuietModeOn
 //const AlarmSounding = 1
 //range AlarmStatuses = AlarmSilenced..AlarmSounding
 
-//
-// Alarm Types
-//
-const Insistent = 0
-const NonInsistent = 1
-const Continuous = 2
-range Alarms = Insistent..Continuous
-
 //=====================
 // Process Definitions
 //=====================
@@ -96,16 +88,20 @@ UNPLUGGED =
 POWER_OFF = 
 (
     turn_on -> SELF_TEST
-    |
-    power_outage -> switch_backup_supply -> check_battery_status ->
-    ( battery_ok -> SETUP[ParamsNotSet][LineUnlocked] | battery_low -> ALARM[NonInsistent])
+),
+
+POWER_OUT = 
+(
+	switch_backup_supply -> check_battery_status -> ( battery_ok -> SETUP[ParamsNotSet][LineUnlocked] | battery_low -> ALARM)
 ),
 
 SELF_TEST = 
 (
-success -> SETUP[ParamsNotSet][LineUnlocked]
-|
-failure -> ALARM
+    success -> SETUP[ParamsNotSet][LineUnlocked]
+    |
+    failure -> ALARM
+    |
+	power_outage -> POWER_OUT
 ),
 
 //
@@ -115,10 +111,6 @@ failure -> ALARM
 //
 SETUP[params:ParamsStateT][lineLock:LineLockStateT] = 
 (
-    unplug -> UNPLUGGED
-    |
-    turn_off -> POWER_OFF
-    |
     when (params == ParamsNotSet && lineLock == LineUnlocked)
         set_rate -> enter_value ->
             (press_set -> SETUP[ParamsSet][lineLock]
@@ -137,7 +129,7 @@ SETUP[params:ParamsStateT][lineLock:LineLockStateT] =
     when (lineLock == LineLocked)
         erase_and_unlock_line -> SETUP[params][LineUnlocked]
     |
-    power_outage -> switch_backup_supply -> check_battery_status ( battery_ok -> SETUP[ParamsNotSet][LineUnlocked] | battery_low -> ALARM[NonInsistent])
+    power_outage -> ALARM
 ),
 
 //
@@ -148,10 +140,6 @@ SETUP[params:ParamsStateT][lineLock:LineLockStateT] =
 //
 INFUSION[unitLock:UnitLockStateT] =
 (
-    unplug -> UNPLUGGED
-    |
-    turn_off -> POWER_OFF
-    |
     when (unitLock == UnitUnlocked)
         change_settings -> SETUP[ParamsSet][LineLocked]
     |
@@ -165,7 +153,7 @@ INFUSION[unitLock:UnitLockStateT] =
     |
     flow_blocked -> sound_alarm -> INFUSION_BLOCKED[unitLock][AlarmActivated]
     |
-    power_outage -> switch_backup_supply -> check_battery_status ( battery_ok -> SETUP[ParamsNotSet][LineUnlocked] | battery_low -> ALARM[NonInsistent])
+    power_outage -> ALARM
 ),
 
 //
@@ -173,10 +161,6 @@ INFUSION[unitLock:UnitLockStateT] =
 //
 INFUSION_BLOCKED[unitLock:UnitLockStateT][alarm:AlarmStateT] =
 (
-    unplug -> UNPLUGGED
-    |
-    turn_off -> POWER_OFF
-    |
     when (alarm == AlarmActivated)
         sound_alarm -> INFUSION_BLOCKED[unitLock][alarm]
     |
@@ -185,7 +169,7 @@ INFUSION_BLOCKED[unitLock:UnitLockStateT][alarm:AlarmStateT] =
     |
     flow_unblocked -> INFUSION[unitLock]
     |
-    power_outage -> switch_backup_supply -> check_battery_status ( battery_ok -> SETUP[ParamsNotSet][LineUnlocked] | battery_low -> ALARM[NonInsistent])
+    power_outage -> ALARM
 ).
 
 
