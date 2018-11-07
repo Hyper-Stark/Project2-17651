@@ -170,6 +170,10 @@ INFUSION_BLOCKED[unitLock:UnitLockStateT][alarm:AlarmStateT] =
     flow_unblocked -> INFUSION[unitLock]
     |
     power_outage -> ALARM
+),
+ALARM = 
+(
+	sound_alarm -> ALARM
 ).
 
 
