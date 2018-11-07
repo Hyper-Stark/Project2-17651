@@ -63,7 +63,7 @@ const Silence = 0
 const Hold = 1
 const Run = 2
 const OcclusionAlarmSettingkey = 3
-range Keypads = SILENCE..OcclusionAlarmSettingkey
+range Keypads = Silence..OcclusionAlarmSettingkey
 
 const QuietModeOff = 0
 const QuietModeOn = 1
