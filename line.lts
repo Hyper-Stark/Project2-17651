@@ -1,0 +1,36 @@
+const SecondStopEnabled = 0
+const SecondStopDisabled = 1
+
+range SecondStopSettings = SecondStopEnabled..SecondStopDisabled
+
+ALARM = (alarm -> ALARM).
+
+PRIMARY_LINE[ss:SecondStopSettings] = 
+(
+	primary_infuse -> PRIMARY_LINE[ss]
+	|
+	finished -> ALARM
+	|
+	pinched -> ALARM
+	|
+	plagged -> ALARM
+	|
+	was_preempted -> SECONDARY_LINE[ss]
+).
+
+SECONDARY_LINE[second_setting:Second_Stop_Settings] = (
+	second_infuse -> SECONDARY_LINE
+	|
+	pinched -> ALARM
+	|
+	plagged -> ALARM
+	|
+	finished -> SECOND_FINISH[second_setting]
+).
+
+SECOND_FINISH[second_setting:Second_Stop_Settings] = (
+	when(second_setting == SecondStopEnabled)
+		recover_primary -> PRIMARY_LINE // || non-insistent alarm
+	when(second_setting == SecondStopDisabled)
+		recover_primary -> ALARM
+).
