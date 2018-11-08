@@ -16,13 +16,10 @@
 // animation of this model.
 //
 menu UserControlMenu = {
-	plug_in, turn_on,
-	unplug, turn_off,
-	set_rate, set_volume, enter_value, press_set, press_cancel,
     change_settings, clear_rate, confirm_settings, connect_set,
-    dispense_main_med_flow, erase_and_unlock_line,
-    flow_unblocked, sound_alarm, lock_unit,  
-     silence_alarm, unlock_unit, 
+    dispense_main_med_flow, enter_value, erase_and_unlock_line,
+    flow_unblocked, sound_alarm, lock_unit, plug_in, press_cancel, 
+    press_set, set_rate, silence_alarm, turn_off, unlock_unit, unplug,
     flow_blocked
 }
 
@@ -62,20 +59,6 @@ const UnitLocked   = 7  // the keypad of the pump is locked
 
 range UnitLockStateT = UnitUnlocked .. UnitLocked
 
-//
-// Maximum and minimum infusion rate
-//
-const Max_rate = 10  // maximum infusion rate
-
-range RateRange = 0 .. Max_rate
-
-//
-// Maximum volume
-//
-const Max_volume = 100  // maximum infusion volume
-
-range VolumeRange = 0 .. Max_volume
-
 //=====================
 // Process Definitions
 //=====================
@@ -104,7 +87,7 @@ SETUP[params:ParamsStateT][lineLock:LineLockStateT] =
     turn_off -> POWER_OFF
     |
     when (params == ParamsNotSet && lineLock == LineUnlocked)
-        (set_rate | set_volume) -> enter_value ->
+        set_rate -> enter_value ->
             (press_set -> SETUP[ParamsSet][lineLock]
              |
              press_cancel -> SETUP[ParamsNotSet][lineLock])
@@ -166,16 +149,3 @@ INFUSION_BLOCKED[unitLock:UnitLockStateT][alarm:AlarmStateT] =
     flow_unblocked -> INFUSION[unitLock]
 ).
 
-/////////////////////
-/* INTERFACE */
-/////////////////////
-// 
-// Display remaining volume
-DISPLAY_VOLUME[vol:VolumeRange] = 
-(
-	when (vol > 0)
-		count_down -> DISPLAY_VOLUME[vol - 1]
-	|
-	when (vol = 0)
-		END
-)
