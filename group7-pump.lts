@@ -81,27 +81,29 @@ PUMP = UNPLUGGED,
 
 UNPLUGGED =
 (
-    // TODO use battery to support when main power is off
     plug_in -> POWER_OFF
 ),
 
-POWER_OFF = 
+// when the main power is on but the pump is not on
+POWER_OFF =
 (
     turn_on -> SELF_TEST
 ),
 
-POWER_OUT = 
+// when the main power is not working, it has to switch to battery
+POWER_OUT =
 (
-	switch_backup_supply -> check_battery_status -> ( battery_ok -> SETUP[ParamsNotSet][LineUnlocked] | battery_low -> ALARM)
+    switch_backup_supply -> check_battery_status ->
+    (battery_ok -> SETUP[ParamsNotSet][LineUnlocked] | battery_low -> ALARM)
 ),
 
-SELF_TEST = 
+SELF_TEST =
 (
     success -> SETUP[ParamsNotSet][LineUnlocked]
     |
     failure -> ALARM
     |
-	power_outage -> POWER_OUT
+    power_outage -> POWER_OUT
 ),
 
 //
