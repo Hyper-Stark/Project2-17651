@@ -80,29 +80,18 @@ POWER_OFF =
 // - Once required pump parameters (just rate in this case) are set,
 //   physical connections can be made and line can be locked
 //
-SETUP[params:ParamsStateT][lineLock:LineLockStateT] = 
+SETUP[params:ParamsStateT] = 
 (
-    unplug -> UNPLUGGED
-    |
-    turn_off -> POWER_OFF
-    |
-    when (params == ParamsNotSet && lineLock == LineUnlocked)
+    when (params == ParamsNotSet)
         set_rate -> enter_value ->
-            (press_set -> SETUP[ParamsSet][lineLock]
+            (press_set -> SETUP[ParamsSet]
              |
-             press_cancel -> SETUP[ParamsNotSet][lineLock])
+             press_cancel -> SETUP[ParamsNotSet])
     |
-    when (params == ParamsSet && lineLock == LineUnlocked)
-        clear_rate -> SETUP[ParamsNotSet][lineLock]
-    |
-    when (params == ParamsSet && lineLock == LineUnlocked)
-        connect_set -> purge_air -> lock_line -> SETUP[params][LineLocked]
-    |
-    when (lineLock == LineLocked)
+    when (params == ParamsSet)
+        clear_rate -> SETUP[ParamsNotSet]
+    	|
         confirm_settings -> INFUSION[UnitUnlocked]
-    |
-    when (lineLock == LineLocked)
-        erase_and_unlock_line -> SETUP[params][LineUnlocked]
 ),
 
 //
