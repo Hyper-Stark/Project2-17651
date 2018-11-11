@@ -67,18 +67,15 @@ range LineAmount = 0..LineMax
 // Process Definitions
 //=====================
 
-PUMP = POWER_SYSTEM,
-
 POWER_SYSTEM = 
 (
-	plug_in ->(turn_on -> SELF_TEST| power_outage -> POWER_OUT)
-),
-
-// when the main power is not working, it has to switch to battery
-POWER_OUT =
-(
-    switch_backup_supply -> check_battery_status ->
-    (battery_ok -> power_ready -> POWER_OUT | battery_low -> ALARM)
+  plug_in ->
+  (
+    turn_on -> power_ready -> POWER_SYSTEM
+    |
+    power_outage -> switch_backup_supply -> check_battery_status ->
+    (battery_ok -> power_ready -> POWER_SYSTEM
+	| battery_low -> sound_alarm -> recharge -> POWER_SYSTEM))
 ).
 
 //
@@ -89,32 +86,28 @@ POWER_OUT =
 STARTUP = SETUP[2],
 SETUP[params:ParamsStateT] =
 (
-	power_ready -> SET_PARAMS[params] | done_infusion -> SET_PARAMS[params]
+  power_ready -> SET_PARAMS[params] | done_infusion -> SET_PARAMS[params]
 ),
 
 SET_PARAMS[params:ParamsStateT] = (
-	when (params == ParamsNotSet)
-		set_rate -> enter_value -> set_volume -> enter_value ->
-			(press_set -> SETUP[ParamsSet]
-			|
-			press_cancel -> SETUP[ParamsNotSet])
-	|
-	when (params == ParamsSet)
-		clear_rate -> SETUP[ParamsNotSet]
-	|
-	when (params == ParamsSet)
-		confirm_settings -> LINE
-	|
-	power_outage -> POWER_OUT
+  when (params == ParamsNotSet)
+    set_rate -> enter_value -> set_volume -> enter_value ->
+      (press_set -> SETUP[ParamsSet]
+      |
+      press_cancel -> SETUP[ParamsNotSet])
+  |
+  when (params == ParamsSet)
+    clear_rate -> SETUP[ParamsNotSet]
+  |
+  when (params == ParamsSet)
+    confirm_settings -> SET_PARAMS[ParamsSet]
 ).
 
 
 ALARM = 
 (
-	sound_alarm -> ALARM
+  sound_alarm -> ALARM
 ).
-
-||RESULT = (l[i:0..1]:STARTUP||l[i:0..1]:LINE||POWER_SYSTEM).
 
 //lines can flow liquid, or be pinched and plugged.
 LINE = LINE[0],
@@ -138,3 +131,5 @@ LINE[i:LineAmount] = (
 LINE_ALARM[i:LineAmount] = (
 	alarm -> alarm_lifted -> LINE[i]
 )/{dispense_main_med_flow/flow_liquid}.
+
+||RESULT = (l[i:0..1]:STARTUP||POWER_SYSTEM).
