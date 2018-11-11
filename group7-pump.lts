@@ -95,6 +95,10 @@ POWER_OUT =
 //
 SETUP[params:ParamsStateT] =
 (
+	power_ready -> SET_PARAMS[params] | done_infusion -> SET_PARAMS[params]
+),
+
+SET_PARAMS[params:ParamsStateT] = (
 	when (params == ParamsNotSet)
 		set_rate -> enter_value -> set_volume -> enter_value ->
 			(press_set -> SETUP[ParamsSet]
@@ -103,11 +107,12 @@ SETUP[params:ParamsStateT] =
 	|
 	when (params == ParamsSet)
 		clear_rate -> SETUP[ParamsNotSet]
-		|
+	|
+	when (params == ParamsSet)
 		confirm_settings -> LINE
 	|
-	power_outage -> ALARM
- ),
+	power_outage -> POWER_OUT
+).
 
 
 ALARM = 
