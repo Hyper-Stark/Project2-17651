@@ -59,6 +59,10 @@ const UnitLocked   = 7  // the keypad of the pump is locked
 
 range UnitLockStateT = UnitUnlocked .. UnitLocked
 
+//only two lines
+const LineMax = 1
+range LineAmount = 0..LineMax
+
 const Silence = 0
 const Hold = 1
 const Run = 2
@@ -173,10 +177,34 @@ INFUSION_BLOCKED[unitLock:UnitLockStateT][alarm:AlarmStateT] =
     |
     power_outage -> ALARM
 ),
+
 ALARM = 
 (
 	sound_alarm -> ALARM
 ).
+
+
+//lines can flow liquid, or be pinched and plugged.
+LINE = LINE[0], LINE[i:LineAmount] = (
+    flow_liquid -> (
+        skip -> LINE[i]
+        |
+        pinched -> LINE_ALARM[i]
+        |
+        plugged -> LINE_ALARM[i]
+        |
+        empty_fluid -> LINE_ALARM[i]
+    )
+),
+
+//when a line is pinched or plugged, alarm will alert.
+//and the line won't flow liquid anymore until the 
+//alarm is lifted.
+LINE_ALARM[i:LineAmount] = (
+    alarm -> alarm_lifted -> LINE[i]
+)/{dispense_main_med_flow/flow_liquid}.
+
+
 
 
 
