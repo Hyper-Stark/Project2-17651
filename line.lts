@@ -1,0 +1,22 @@
+//only two lines
+const LineMax = 2
+range LineAmount = 1..LineMax
+
+//lines can flow liquid, or be pinched and plugged.
+LINE = (
+    flow_liquid -> LINE
+    |
+	pinched -> LINE_ALARM
+    |
+    plugged -> LINE_ALARM
+),
+
+//when a line is pinched or plugged, alarm will alert.
+//and the line won't flow liquid anymore until the 
+//alarm is lifted.
+LINE_ALARM = (
+    alarm -> alarm_lifted -> LINE
+).
+
+//two lines flow liquids concurrently.
+||LINES = (l[i:LineAmount]:LINE).
