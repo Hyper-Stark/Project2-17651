@@ -67,33 +67,25 @@ range LineAmount = 0..LineMax
 // Process Definitions
 //=====================
 
-PUMP = UNPLUGGED,
+PUMP = POWER_SYSTEM,
 
-UNPLUGGED =
+POWER_SYSTEM = 
 (
-    plug_in -> POWER_OFF
+	plug_in ->(turn_on -> SELF_TEST| power_outage -> POWER_OUT)
 ),
 
-// when the main power is on but the pump is not on
-POWER_OFF =
+SELF_TEST =
 (
-    turn_on -> SELF_TEST
+    success -> power_ready -> SELF_TEST
+    |
+    failure -> ALARM
 ),
 
 // when the main power is not working, it has to switch to battery
 POWER_OUT =
 (
     switch_backup_supply -> check_battery_status ->
-    (battery_ok -> SETUP[ParamsNotSet][LineUnlocked] | battery_low -> ALARM)
-),
-
-SELF_TEST =
-(
-    success -> SETUP[ParamsNotSet][LineUnlocked]
-    |
-    failure -> ALARM
-    |
-    power_outage -> POWER_OUT
+    (battery_ok -> power_ready -> POWER_OUT | battery_low -> ALARM)
 ),
 
 //
@@ -103,59 +95,20 @@ SELF_TEST =
 //
 SETUP[params:ParamsStateT] =
 (
-when (params == ParamsNotSet)
-set_rate -> enter_value -> set_volume -> enter_value ->
-(press_set -> SETUP[ParamsSet]
-|
-press_cancel -> SETUP[ParamsNotSet])
-|
-when (params == ParamsSet)
-clear_rate -> SETUP[ParamsNotSet]
-|
-confirm_settings -> INFUSION[UnitUnlocked]
-|
-power_outage -> ALARM
+	when (params == ParamsNotSet)
+		set_rate -> enter_value -> set_volume -> enter_value ->
+			(press_set -> SETUP[ParamsSet]
+			|
+			press_cancel -> SETUP[ParamsNotSet])
+	|
+	when (params == ParamsSet)
+		clear_rate -> SETUP[ParamsNotSet]
+		|
+		confirm_settings -> LINE
+	|
+	power_outage -> ALARM
  ),
 
-//
-// Pump in infusion mode:
-// - Always be able to turn the unit off, even if locked
-// - Allow the user to lock/unlock the unit
-// - Errors could occur with the pump (e.g., line became pinched or plugged)
-//
-INFUSION[unitLock:UnitLockStateT] =
-(
-    when (unitLock == UnitUnlocked)
-        change_settings -> SETUP[ParamsSet][LineLocked]
-    |
-    when (unitLock == UnitUnlocked)
-        lock_unit -> INFUSION[UnitLocked]
-    |
-    when (unitLock == UnitLocked)
-        unlock_unit -> INFUSION[UnitUnlocked]
-    |
-    dispense_main_med_flow -> INFUSION[unitLock]
-    |
-    flow_blocked -> sound_alarm -> INFUSION_BLOCKED[unitLock][AlarmActivated]
-    |
-    power_outage -> ALARM
-),
-
-//
-// Pump stuck (medication flow suspended)
-//
-INFUSION_BLOCKED[unitLock:UnitLockStateT][alarm:AlarmStateT] =
-(
-    when (alarm == AlarmActivated)
-        sound_alarm -> INFUSION_BLOCKED[unitLock][alarm]
-    |
-    when (alarm == AlarmActivated)
-        silence_alarm -> INFUSION_BLOCKED[unitLock][AlarmSilenced]
-    |
-    flow_unblocked -> INFUSION[unitLock]
-    |
-    power_outage -> ALARM
-),
 
 ALARM = 
 (
