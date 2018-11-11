@@ -139,4 +139,5 @@ LINE_ALARM[i:LineAmount] = (
 	alarm -> alarm_lifted -> LINE[i]
 )/{dispense_main_med_flow/flow_liquid}.
 
-||RESULT = (l[i:0..1]:STARTUP||POWER_SYSTEM).
+||RESULT = (l[i:0..1]:STARTUP||POWER_SYSTEM)
+/{power_ready/l.[t:0..1].power_ready}.
