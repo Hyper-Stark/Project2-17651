@@ -74,25 +74,19 @@ POWER_SYSTEM =
 	plug_in ->(turn_on -> SELF_TEST| power_outage -> POWER_OUT)
 ),
 
-SELF_TEST =
-(
-    success -> power_ready -> SELF_TEST
-    |
-    failure -> ALARM
-),
-
 // when the main power is not working, it has to switch to battery
 POWER_OUT =
 (
     switch_backup_supply -> check_battery_status ->
     (battery_ok -> power_ready -> POWER_OUT | battery_low -> ALARM)
-),
+).
 
 //
 // Pump in setup mode:
 // - Once required pump parameters (just rate in this case) are set,
 //   physical connections can be made and line can be locked
 //
+STARTUP = SETUP[2],
 SETUP[params:ParamsStateT] =
 (
 	power_ready -> SET_PARAMS[params] | done_infusion -> SET_PARAMS[params]
@@ -120,14 +114,12 @@ ALARM =
 	sound_alarm -> ALARM
 ).
 
+||RESULT = (l[i:0..1]:STARTUP||l[i:0..1]:LINE||POWER_SYSTEM).
 
-INFUSION = (
-	confirm_settings -> LINE
-),
 //lines can flow liquid, or be pinched and plugged.
 LINE = LINE[0],
 LINE[i:LineAmount] = (
-	flow_liquid -> (
+	confirm_settings -> flow_liquid -> (
 		skip -> LINE[i]
 		|
 		pinched -> LINE_ALARM[i]
