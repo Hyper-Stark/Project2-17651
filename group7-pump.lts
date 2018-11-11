@@ -69,13 +69,17 @@ range LineAmount = 0..LineMax
 
 POWER_SYSTEM = 
 (
-  plug_in ->
-  (
-    turn_on -> power_ready -> POWER_SYSTEM
-    |
-    power_outage -> switch_backup_supply -> check_battery_status ->
-    (battery_ok -> power_ready -> POWER_SYSTEM
-	| battery_low -> sound_alarm -> recharge -> POWER_SYSTEM))
+	plug_in ->
+	(
+		turn_on -> power_ready -> POWER_SYSTEM
+		|
+		power_outage -> switch_backup_supply -> check_battery_status ->
+		(
+			battery_ok -> power_ready -> POWER_SYSTEM
+			|
+			battery_low -> sound_alarm -> recharge -> POWER_SYSTEM
+		)
+	)
 ).
 
 //
@@ -86,23 +90,26 @@ POWER_SYSTEM =
 STARTUP = SETUP[2],
 SETUP[params:ParamsStateT] =
 (
-  power_ready -> SET_PARAMS[params] | done_infusion -> SET_PARAMS[params]
+	power_ready -> SET_PARAMS[params]
+	|
+	done_infusion -> SET_PARAMS[params]
 ),
 
 SET_PARAMS[params:ParamsStateT] = (
-  when (params == ParamsNotSet)
-    set_rate -> enter_value -> set_volume -> enter_value ->
-      (press_set -> SETUP[ParamsSet]
-      |
-      press_cancel -> SETUP[ParamsNotSet])
-  |
-  when (params == ParamsSet)
-    clear_rate -> SETUP[ParamsNotSet]
-  |
-  when (params == ParamsSet)
-    confirm_settings -> SET_PARAMS[ParamsSet]
+	when (params == ParamsNotSet)
+		set_rate -> enter_value -> set_volume -> enter_value ->
+		(
+			press_set -> SETUP[ParamsSet]
+			|
+			press_cancel -> SETUP[ParamsNotSet]
+		)
+		|
+		when (params == ParamsSet)
+			clear_rate -> SETUP[ParamsNotSet]
+		|
+		when (params == ParamsSet)
+			confirm_settings -> SET_PARAMS[ParamsSet]
 ).
-
 
 ALARM = 
 (
