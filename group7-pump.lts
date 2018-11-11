@@ -117,27 +117,29 @@ ALARM =
 ).
 
 //lines can flow liquid, or be pinched and plugged.
-LINE = LINE[0],
-LINE[i:LineAmount] = (
-	confirm_settings -> flow_liquid -> (
-		skip -> LINE[i]
-		|
-		pinched -> LINE_ALARM[i]
-		|
-		plugged -> LINE_ALARM[i]
-		|
-		empty_fluid -> LINE_ALARM[i]
-	)
-	|
-	done_infusion -> INFUSION //TODO consider the volume?
+LINE = (
+    confirm_settings -> INFUSION //TODO consider the volume?
+),
+INFUSION = (
+    flow_liquid -> (
+        skip -> INFUSION
+        |
+        done_infusion -> LINE
+        |
+        pinched -> LINE_ALARM
+        |
+        plugged -> LINE_ALARM
+        |
+        empty_fluid -> LINE_ALARM
+    )
 ),
 
 //when a line is pinched or plugged, alarm will alert.
 //and the line won't flow liquid anymore until the 
 //alarm is lifted.
-LINE_ALARM[i:LineAmount] = (
-	alarm -> alarm_lifted -> LINE[i]
+LINE_ALARM = (
+    alarm -> alarm_lifted -> INFUSION
 )/{dispense_main_med_flow/flow_liquid}.
 
-||RESULT = (l[i:0..1]:STARTUP||POWER_SYSTEM)
+||RESULT = (l[i:0..1]:STARTUP||POWER_SYSTEM||l[i:0..1]:LINE)
 /{power_ready/l.[t:0..1].power_ready}.
