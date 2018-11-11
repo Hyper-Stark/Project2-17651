@@ -63,20 +63,6 @@ range UnitLockStateT = UnitUnlocked .. UnitLocked
 const LineMax = 1
 range LineAmount = 0..LineMax
 
-const Silence = 0
-const Hold = 1
-const Run = 2
-const OcclusionAlarmSettingkey = 3
-range Keypads = Silence..OcclusionAlarmSettingkey
-
-const QuietModeOff = 0
-const QuietModeOn = 1
-range QuietModes = QuietModeOff..QuietModeOn
-
-//const AlarmSilenced = 0
-//const AlarmSounding = 1
-//range AlarmStatuses = AlarmSilenced..AlarmSounding
-
 //=====================
 // Process Definitions
 //=====================
@@ -203,60 +189,3 @@ LINE = LINE[0], LINE[i:LineAmount] = (
 LINE_ALARM[i:LineAmount] = (
     alarm -> alarm_lifted -> LINE[i]
 )/{dispense_main_med_flow/flow_liquid}.
-
-
-
-
-
-////////////////////////////////////The content below is added by MIA. waiting for Rishabh's part done.
-// INFUSION_BLOCKED[alarmStatus: AlarmStatuses] = 
-// (
-//     // when occlusion happens
-//     when(alarmStatus == AlarmSounding)
-//         flow_blocked -> ALARM[Insistent][alarmStatus]
-//     |
-//     // when Hold is pressed after a non-insistent alarm happens
-//     when(alarmStatus == AlarmSilenced) 
-//         flow_blocked -> ALARM[NonInsistent][alarmStatus]
-// ),
-
-
-// // TODO QUIET MODE
-// ALARM[alarm: Alarms][alarmStatus: AlarmStatuses] = 
-// (
-//     when(alarmStatus == AlarmSounding)
-//         when(alarm == Insistent)
-//             sound_alarm -> ALARM[alarm][alarmStatus]
-//             |
-//             sound_alarm -> USER_INTERFACE[Silence]
-//             |
-//             sound_alarm -> USER_INTERFACE[Hold]
-//         |
-//         when(alarm == NonInsistent)
-//             sound_alarm -> USER_INTERFACE[Silence]
-//             |
-//             sound_alarm -> USER_INTERFACE[Run]
-//             |
-//             sound_alarm -> USER_INTERFACE[Hold]
-//         //TODO when Continuous alarm
-//     |
-//     when(alarmStatus == AlarmSilenced)
-//         when(alarm == Insistent)
-//             flow_unblocked -> INFUSION[___]
-//             |
-//             silence_alarm -> ALARM[alarm][alarmStatus]
-//         when(alarm == NonInsistent)
-//             silence_alarm -> ALARM[alarm][alarmStatus]
-// ),
-
-// NORMAL_KEYPAD = END,
-
-// ALARMING_KEYPAD[alarm: Alarms][key: Keypads] = 
-// (
-//     silence_alarm -> (
-//         when(alarm == NonInsistent && key == Hold)
-//             INFUSION_BLOCKED[AlarmSilenced]
-//         |
-//         ALARM[alarm, AlarmSilenced]
-//     )
-// ).
