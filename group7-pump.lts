@@ -19,7 +19,7 @@ menu UserControlMenu = {
     change_settings, clear_rate, confirm_settings, connect_set,
     dispense_main_med_flow, enter_value, erase_and_unlock_line,
     flow_unblocked, sound_alarm, lock_unit, plug_in, press_cancel, 
-    press_set, set_rate, silence_alarm, turn_off, unlock_unit, unplug,
+    press_set, set_rate, set_volume, silence_alarm, turn_off, unlock_unit, unplug,
     flow_blocked
 }
 
@@ -104,17 +104,17 @@ SELF_TEST =
 SETUP[params:ParamsStateT] =
 (
  when (params == ParamsNotSet)
-    set_rate -> enter_value -> set_volume -> enter_value
-        (press_set -> SETUP[ParamsSet]
-         |
-         press_cancel -> SETUP[ParamsNotSet])
+ set_rate -> enter_value -> set_volume -> enter_value ->
+ (press_set -> SETUP[ParamsSet]
+  |
+  press_cancel -> SETUP[ParamsNotSet])
  |
-    when (params == ParamsSet)
-        clear_rate -> SETUP[ParamsNotSet]
-        |
-        confirm_settings -> INFUSION[UnitUnlocked]
-   |
-    power_outage -> ALARM
+ when (params == ParamsSet)
+ clear_rate -> SETUP[ParamsNotSet]
+ |
+ confirm_settings -> INFUSION[UnitUnlocked]
+ |
+ power_outage -> ALARM
  ),
 
 //
