@@ -103,18 +103,18 @@ SELF_TEST =
 //
 SETUP[params:ParamsStateT] =
 (
- when (params == ParamsNotSet)
- set_rate -> enter_value -> set_volume -> enter_value ->
- (press_set -> SETUP[ParamsSet]
-  |
-  press_cancel -> SETUP[ParamsNotSet])
- |
- when (params == ParamsSet)
- clear_rate -> SETUP[ParamsNotSet]
- |
- confirm_settings -> INFUSION[UnitUnlocked]
- |
- power_outage -> ALARM
+when (params == ParamsNotSet)
+set_rate -> enter_value -> set_volume -> enter_value ->
+(press_set -> SETUP[ParamsSet]
+|
+press_cancel -> SETUP[ParamsNotSet])
+|
+when (params == ParamsSet)
+clear_rate -> SETUP[ParamsNotSet]
+|
+confirm_settings -> INFUSION[UnitUnlocked]
+|
+power_outage -> ALARM
  ),
 
 //
