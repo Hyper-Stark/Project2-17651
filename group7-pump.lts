@@ -30,6 +30,9 @@ menu UserControlMenu = {
 //
 // States of the pump alarm
 //
+const AlarmAmount    = 1
+range AlarmRange     = 0..AlarmAmount
+
 const AlarmActivated = 0    // Alarm currently active
 const AlarmSilenced  = 1    // Alarm currently inactive
 
@@ -111,9 +114,37 @@ SET_PARAMS[params:ParamsStateT] = (
 			confirm_settings -> SET_PARAMS[ParamsSet]
 ).
 
-ALARM = 
-(
-  sound_alarm -> ALARM
+//Semaphore used to control the race condition of ALARM resource.
+SEMAPHORE(I=0)     = SEMA[I],
+SEMA[i:AlarmRange] = (when(i<AlarmAmount) up-> SEMA[i+1]
+                     |when(i>0)           down->SEMA[i-1]
+).
+
+//The entire alarm system
+ALARM_SYS = (
+	l[i:AlarmRange].down -> SOUND_ALARM[i]
+),
+
+//The sub system of sound alarm.
+SOUND_ALARM[i:AlarmRange] = (
+     sound_alarm -> (
+        solve_problem -> alarm_lifted -> l[i].up -> ALARM_SYS
+        |
+        skip -> SOUND_ALARM[i]
+        |
+        mute -> SLIENT_ALARM[i]
+     )
+),
+
+//The sub system of slient alarm.
+SLIENT_ALARM[i:AlarmRange] = (
+    alarm_sliently -> (
+        solve_problem -> alarm_lifted -> l[i].up -> ALARM_SYS
+        |
+        skip -> SLIENT_ALARM[i]
+        |
+        unmute -> SOUND_ALARM[i]
+    )
 ).
 
 //lines can flow liquid, or be pinched and plugged.
@@ -138,8 +169,10 @@ INFUSION = (
 //and the line won't flow liquid anymore until the 
 //alarm is lifted.
 LINE_ALARM = (
-    alarm -> alarm_lifted -> INFUSION
+    down -> up -> INFUSION
 )/{dispense_main_med_flow/flow_liquid}.
 
-||RESULT = (l[i:0..1]:STARTUP||POWER_SYSTEM||l[i:0..1]:LINE)
+//PUMP = (POWER_SYSTEM)
+||PUMP = (l[i:0..1]:STARTUP|| l[i:LineAmount]:LINE || ALARM_SYS || l[i:LineAmount]::SEMAPHORE(1))
+//||PUMP = (l[i:0..1]:STARTUP|| POWER_SYSTEM|| l[i:LineAmount]:LINE || ALARM_SYS || l[i:LineAmount]::SEMAPHORE(AlarmAmount))
 /{power_ready/l.[t:0..1].power_ready}.
