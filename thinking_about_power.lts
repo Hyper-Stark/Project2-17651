@@ -1,36 +1,42 @@
-const A = 0
-const B = 1
-const C = 2
-range STATE = A..C
+const PLUGGED_OUT = 0
+const PLUGGED_IN = 1
+range PLUGGED = PLUGGED_OUT..PLUGGED_IN
 
-START(S=0) = START[S],
-START[s:A..C] = (
-    power_available -> EXECUTION_WITH_ELEC[s]
-    |
-    battery_available -> EXECUTION_WITH_ELEC[s]
-    |
-    power_out -> START[s]
+const BATTERY_OFF = 0
+const BATTERY_ON = 1
+range BATTERY = BATTERY_OFF..BATTERY_ON
+
+const POWER_UNAVAILABLE = 0
+const POWER_READY = 1
+range POWER = POWER_UNAVAILABLE..POWER_READY
+
+POWER_SYSTEM = PS[PLUGGED_OUT][BATTERY_OFF][POWER_UNAVAILABLE],
+P[p: PLUGGED][b: BATTERY][power: POWER] =
+(
+    plug[p] -> battery[b] -> power[power] -> PS[p][b][power]
 ),
-
-EXECUTION_WITH_ELEC[s:A..C] = (
-    when(s == A) a -> START[B]
+PS[p: PLUGGED][b: BATTERY][power: POWER] =
+(
+    when (p == PLUGGED_OUT)
+        plug_in -> P[PLUGGED_IN][BATTERY_OFF][POWER_UNAVAILABLE]
     |
-    when(s == B) b -> START[C]
+    when (p == PLUGGED_IN && b == BATTERY_OFF && power == POWER_UNAVAILABLE)
+        turn_on ->
+        (
+            power_ready -> P[p][b][POWER_READY]
+            |
+            power_outage -> battery_on -> P[p][BATTERY_ON][POWER_UNAVAILABLE]
+        )
     |
-    when(s == C) c -> START[A]
+    when (p == PLUGGED_IN && b == BATTERY_ON && power == POWER_UNAVAILABLE)
+        battery_ok -> power_ready -> P[p][b][POWER_READY]
+    |
+    when (p == PLUGGED_IN && b == BATTERY_ON)
+        battery_low -> sound_ps_alarm -> recharge -> power_ready -> P[p][b][POWER_READY]
+    |
+    when (p == PLUGGED_IN && power == POWER_READY)
+        plug_out -> P[PLUGGED_OUT][BATTERY_OFF][POWER_UNAVAILABLE]
+    |
+    when (power == POWER_READY)
+        skip -> P[p][b][power]
 ).
-
-POWER = (
-    power_available -> POWER
-    |
-    power_out -> POWER_OUTAGE
-),
-
-POWER_OUTAGE = (    
-    battery_available -> POWER_OUTAGE
-    |
-    battery_out -> END
-).
-
-
-||PUMP = (POWER||START(0)).
