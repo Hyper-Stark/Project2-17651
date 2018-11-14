@@ -14,42 +14,46 @@ const ParamsNotSet = 2    // pump parameters not set yet
 const ParamsSet    = 3    // pump parameters already set
 range ParamsStateT = ParamsNotSet .. ParamsSet
 
-POWER_SYSTEM = PS[PLUGGED_OUT][BATTERY_OFF][POWER_UNAVAILABLE],
-PS[p: PLUGGED][b: BATTERY][power: POWER] =
+POWER_SYSTEM = PS[PLUGGED_OUT][POWER_UNAVAILABLE],
+PS[p: PLUGGED][power: POWER] =
 (
     when (p == PLUGGED_OUT)
-        plug_in -> PS[PLUGGED_IN][BATTERY_OFF][POWER_UNAVAILABLE]
+        plug_in -> PS[PLUGGED_IN][POWER_UNAVAILABLE]
     |
-    when (p == PLUGGED_IN && b == BATTERY_OFF && power == POWER_UNAVAILABLE)
+    when (p == PLUGGED_IN && power == POWER_UNAVAILABLE)
         turn_on ->
         (
-            working -> PS[p][b][POWER_READY]
+            mains_working -> PS[p][POWER_READY]
             |
-            not_working -> battery_on -> PS[p][BATTERY_ON][power]
+            mains_not_working -> BS//battery_on -> PS[p][BATTERY_ON][power]
         )
     |
-    when (p == PLUGGED_IN && b == BATTERY_ON && power == POWER_UNAVAILABLE)
-        battery_ok -> PS[p][b][POWER_READY]
-    |
-    when (p == PLUGGED_IN && b == BATTERY_ON && power == POWER_UNAVAILABLE)
-        battery_low -> sound_ps_alarm -> recharge -> PS[p][b][POWER_READY]
-    |
     when (power == POWER_READY)
-        power[power] -> PS[p][b][power] // nothing happened, same as skip
+        power[power] -> PS[p][power] // nothing happened, same as skip
     |
     when (power == POWER_READY)
         plug_out -> P[POWER_UNAVAILABLE]
 ),
+
 P[power: POWER] =
 (
-    power[power] -> PS[PLUGGED_OUT][BATTERY_OFF][power]
+    power[power] -> PS[PLUGGED_OUT][power]
 ).
 
+BS =
+(
+	switch_to_battery-> check_battery_status ->
+	(
+		battery_working -> init_state -> BS
+		|
+		battery_not_working-> STOP
+	)
+).
 
 SETUP = S[ParamsNotSet][ParamsNotSet],
 S[pSet: ParamsStateT][vPressed: ParamsStateT] =
 (
-    power_out -> S[ParamsNotSet][ParamsNotSet]
+    power_out -> init_state-> S[ParamsNotSet][ParamsNotSet]
     |
     power_ready ->
     (
