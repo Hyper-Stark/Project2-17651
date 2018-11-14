@@ -1,0 +1,62 @@
+const PLUGGED_OUT = 0
+const PLUGGED_IN = 1
+range PLUGGED = PLUGGED_OUT..PLUGGED_IN
+
+const BATTERY_OFF = 0
+const BATTERY_ON = 1
+range BATTERY = BATTERY_OFF..BATTERY_ON
+
+const POWER_OFF = 0
+const POWER_ON = 1
+range POWER = POWER_OFF..POWER_ON
+
+const ParamsNotSet = 2    // pump parameters not set yet
+const ParamsSet    = 3    // pump parameters already set
+range ParamsStateT = ParamsNotSet .. ParamsSet
+
+POWER_SYSTEM = 
+(
+	plug_in -> turn_on -> SELF_CHECK
+),
+SELF_CHECK = 
+(
+	ac_power_ready -> SELF_CHECK
+	|
+	mains_power_failure -> switch_to_battery-> SELF_CHECK//battery_on -> PS[p][BATTERY_ON][power]
+).
+
+BATTERY_SYSTEM = 
+(
+	switch_to_battery-> 
+	(
+		battery_working -> battery_power_ready -> BATTERY_SYSTEM
+		|
+		battery_not_working-> STOP
+	)
+).
+
+SETUP = (
+	ac_power_ready -> SET_PARAMS[ParamsNotSet]
+	|
+	battery_power_ready -> SET_PARAMS[ParamsNotSet]
+),
+SET_PARAMS[params:ParamsStateT] = (
+	mains_power_failure -> SETUP
+	|	
+	when (params == ParamsNotSet)
+		set_rate -> set_volume ->
+		(
+			press_set -> SET_PARAMS[ParamsSet]
+			|
+			press_cancel -> SET_PARAMS[ParamsNotSet]
+		)
+		|
+		when (params == ParamsSet)
+			clear_rate -> SET_PARAMS[ParamsNotSet]
+		|
+		when (params == ParamsSet)
+			confirm_settings -> SET_PARAMS[ParamsSet]
+).
+
+||PUMP = (POWER_SYSTEM || SETUP || BATTERY_SYSTEM)
+/{power_out/power[POWER_OFF], power_ready/power[POWER_ON]}.
