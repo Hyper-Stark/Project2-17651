@@ -10,6 +10,10 @@ const POWER_UNAVAILABLE = 0
 const POWER_READY = 1
 range POWER = POWER_UNAVAILABLE..POWER_READY
 
+const ParamsNotSet = 2    // pump parameters not set yet
+const ParamsSet    = 3    // pump parameters already set
+range ParamsStateT = ParamsNotSet .. ParamsSet
+
 POWER_SYSTEM = PS[PLUGGED_OUT][BATTERY_OFF][POWER_UNAVAILABLE],
 P[p: PLUGGED][b: BATTERY][power: POWER] =
 (
@@ -31,12 +35,37 @@ PS[p: PLUGGED][b: BATTERY][power: POWER] =
     when (p == PLUGGED_IN && b == BATTERY_ON && power == POWER_UNAVAILABLE)
         battery_ok -> power_ready -> P[p][b][POWER_READY]
     |
-    when (p == PLUGGED_IN && b == BATTERY_ON)
+    when (p == PLUGGED_IN && b == BATTERY_ON && power == POWER_UNAVAILABLE)
         battery_low -> sound_ps_alarm -> recharge -> power_ready -> P[p][b][POWER_READY]
     |
-    when (p == PLUGGED_IN && power == POWER_READY)
+    when (power == POWER_READY)
         plug_out -> P[PLUGGED_OUT][BATTERY_OFF][POWER_UNAVAILABLE]
     |
     when (power == POWER_READY)
-        skip -> P[p][b][power]
+        ready -> P[p][b][power] // nothing happened --> skip
 ).
+
+SETUP = S[ParamsNotSet][ParamsNotSet],
+S[pSet: ParamsStateT][vPressed: ParamsStateT] =
+(
+    power_done -> // TODO get infusion status
+    (
+        when (pSet == ParamsNotSet && vPressed == ParamsNotSet)
+            set_rate -> S[pSet][ParamsSet]
+        |
+        when (pSet == ParamsNotSet && vPressed == ParamsSet)
+            press_set -> S[ParamsSet][vPressed]
+        |
+        when (pSet == ParamsNotSet && vPressed == ParamsSet)
+            press_cancel -> S[ParamsNotSet][ParamsNotSet]
+        |
+        when (pSet == ParamsSet)
+            continue -> S[pSet][ParamsSet]
+        |
+        when (pSet == ParamsSet)
+            done_infusion -> S[ParamsNotSet][ParamsNotSet]
+    )
+).
+
+||RESULT = (POWER_SYSTEM || SETUP)
+/{power_out/power[POWER_UNAVAILABLE], power_done/power[POWER_READY]}.
