@@ -70,5 +70,5 @@ S[pSet: ParamsStateT][vPressed: ParamsStateT] =
     )
 ).
 
-||RESULT = (POWER_SYSTEM || SETUP)
+||PUMP = (POWER_SYSTEM || SETUP)
 /{power_out/power[POWER_UNAVAILABLE], power_ready/power[POWER_READY]}.
