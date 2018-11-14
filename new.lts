@@ -15,10 +15,6 @@ const ParamsSet    = 3    // pump parameters already set
 range ParamsStateT = ParamsNotSet .. ParamsSet
 
 POWER_SYSTEM = PS[PLUGGED_OUT][BATTERY_OFF][POWER_UNAVAILABLE],
-P[power: POWER] =
-(
-    power[power] -> PS[PLUGGED_OUT][BATTERY_OFF][power]
-),
 PS[p: PLUGGED][b: BATTERY][power: POWER] =
 (
     when (p == PLUGGED_OUT)
@@ -43,7 +39,12 @@ PS[p: PLUGGED][b: BATTERY][power: POWER] =
     |
     when (power == POWER_READY)
         plug_out -> P[POWER_UNAVAILABLE]
-).
+),
+P[power: POWER] =
+(
+    power[power] -> PS[PLUGGED_OUT][BATTERY_OFF][power]
+),
+
 
 SETUP = S[ParamsNotSet][ParamsNotSet],
 S[pSet: ParamsStateT][vPressed: ParamsStateT] =
