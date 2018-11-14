@@ -43,7 +43,7 @@ PS[p: PLUGGED][b: BATTERY][power: POWER] =
 P[power: POWER] =
 (
     power[power] -> PS[PLUGGED_OUT][BATTERY_OFF][power]
-),
+).
 
 
 SETUP = S[ParamsNotSet][ParamsNotSet],
