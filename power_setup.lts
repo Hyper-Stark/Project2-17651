@@ -67,3 +67,37 @@ BS[battery_switch: BATTERY_SWITCH][battery_status: BATTERY_STATUS] =
         battery_out -> BS[battery_switch][BATTERY_OUT]
 ).
 ||POWER_SYSTEM = (AC_POWER || BATTERY_SYSTEM).
+
+SETUP =
+(
+    plug_out -> SETUP
+    |ac_power_out -> SETUP
+    |battery_out -> SETUP
+    |ac_power_on -> S[ParamsNotSet][ParamsNotSet]
+    |battery_on -> S[ParamsNotSet][ParamsNotSet]
+),
+S[p_set: ParamsStateT][v_pressed: ParamsStateT] =
+(
+    plug_out -> S[p_set][v_pressed]
+    |ac_power_out -> S[p_set][v_pressed] //battery may keep working
+    |battery_out -> SETUP
+    |ac_power_on -> S[p_set][v_pressed]
+    |battery_on -> S[p_set][v_pressed]
+    |
+    when (p_set == ParamsNotSet && v_pressed == ParamsNotSet)
+        set_rate -> S[p_set][ParamsSet]
+    |
+    when (p_set == ParamsNotSet && v_pressed == ParamsSet)
+        press_set -> S[ParamsSet][v_pressed]
+    |
+    when (p_set == ParamsNotSet && v_pressed == ParamsSet)
+        press_cancel -> S[ParamsNotSet][ParamsNotSet]
+    |
+    when (p_set == ParamsSet)
+        continue -> S[p_set][ParamsSet]
+    |
+    when (p_set == ParamsSet) // TODO get infusion status
+        done_infusion -> S[ParamsNotSet][ParamsNotSet]
+).
+
+||PUMP = (POWER_SYSTEM || SETUP).
