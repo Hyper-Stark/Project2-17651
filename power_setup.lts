@@ -18,6 +18,12 @@ const ParamsNotSet = 2    // pump parameters not set yet
 const ParamsSet    = 3    // pump parameters already set
 range ParamsStateT = ParamsNotSet .. ParamsSet
 
+const AlarmMax = 1
+range AlarmAmount  = 0..AlarmMax
+
+const LineMax = 1
+range LineAmount = 0..LineMax
+
 AC_POWER = AC[PLUGGED_OUT][POWER_UNAVAILABLE],
 AC[plug: PLUGGED][ac_on: POWER] =
 (
@@ -43,16 +49,20 @@ AC[plug: PLUGGED][ac_on: POWER] =
 BATTERY_SYSTEM = 
 (
     plug_out -> BATTERY_SYSTEM
-    |ac_power_on -> BATTERY_SYSTEM
-    |switch_to_battery -> BS[BATTERY_OFF][BATTERY_OUT]
-    |switch_to_battery -> BS[BATTERY_OFF][BATTERY_OK]
+    |
+    ac_power_on -> BATTERY_SYSTEM
+    |
+    switch_to_battery -> BS[BATTERY_OFF][BATTERY_OUT]
+    |
+    switch_to_battery -> BS[BATTERY_OFF][BATTERY_OK]
 ),
+
 BS[battery_switch: BATTERY_SWITCH][battery_status: BATTERY_STATUS] = 
 (
     // have battery --> keep working
     plug_out -> BS[battery_switch][battery_status]
-    // when the battery is working but the ac power works, it should turn to ac power
-    |ac_power_on -> BATTERY_SYSTEM
+    |// when the battery is working but the ac power works, it should turn to ac power
+    ac_power_on -> BATTERY_SYSTEM
     |
     when (battery_switch == BATTERY_OFF)
         check_battery -> BS[BATTERY_ON][battery_status]
@@ -68,36 +78,130 @@ BS[battery_switch: BATTERY_SWITCH][battery_status: BATTERY_STATUS] =
 ).
 ||POWER_SYSTEM = (AC_POWER || BATTERY_SYSTEM).
 
-SETUP =
+SETUP(A=ParamsNotSet,B=ParamsNotSet) = SETUP[A][B],
+SETUP[p_set:ParamsStateT][v_pressed:ParamsStateT] = 
 (
-    plug_out -> SETUP
-    |ac_power_out -> SETUP
-    |battery_out -> SETUP
-    |ac_power_on -> S[ParamsNotSet][ParamsNotSet]
-    |battery_on -> S[ParamsNotSet][ParamsNotSet]
+    plug_out -> SETUP[ParamsNotSet][ParamsNotSet]
+    |
+    ac_power_out -> SETUP[p_set][v_pressed]
+    |
+    battery_out -> SETUP[ParamsNotSet][ParamsNotSet]
+    |
+    ac_power_on -> S[p_set][v_pressed]
+    |
+    battery_on -> S[p_set][v_pressed]
 ),
+
 S[p_set: ParamsStateT][v_pressed: ParamsStateT] =
 (
-    plug_out -> S[p_set][v_pressed]
-    |ac_power_out -> S[p_set][v_pressed] //battery may keep working
-    |battery_out -> SETUP
-    |ac_power_on -> S[p_set][v_pressed]
-    |battery_on -> S[p_set][v_pressed]
-    |
     when (p_set == ParamsNotSet && v_pressed == ParamsNotSet)
-        set_rate -> S[p_set][ParamsSet]
+        set_rate -> SETUP[p_set][ParamsSet]
     |
     when (p_set == ParamsNotSet && v_pressed == ParamsSet)
-        press_set -> S[ParamsSet][v_pressed]
+        press_set -> SETUP[ParamsSet][v_pressed]
     |
     when (p_set == ParamsNotSet && v_pressed == ParamsSet)
-        press_cancel -> S[ParamsNotSet][ParamsNotSet]
+        press_cancel -> SETUP[ParamsNotSet][ParamsNotSet]
     |
     when (p_set == ParamsSet)
-        continue -> S[p_set][ParamsSet]
+        confirm_settings -> LINE
+),
+
+LINE = (
+    plug_out -> LINE
     |
-    when (p_set == ParamsSet) // TODO get infusion status
-        done_infusion -> S[ParamsNotSet][ParamsNotSet]
+    ac_power_out -> LINE
+    |
+    battery_out -> LINE
+    |
+    ac_power_on -> (
+        flow_liquid -> L
+        |
+        infusion_done -> SETUP[ParamsNotSet][ParamsNotSet]
+    )
+    |
+    battery_on -> (
+        flow_liquid -> L
+        |
+        infusion_done -> SETUP[ParamsNotSet][ParamsNotSet]
+    )
+),
+
+L = (
+    plug_out -> L
+    |
+    ac_power_out -> L
+    |
+    battery_out -> L
+    |
+    ac_power_on -> (
+        skip -> LINE
+        |
+        pinched -> END
+        |
+        plugged -> END
+        |
+        empty_fluid -> END
+    )
+    |
+    battery_on -> (
+        skip -> LINE
+        |
+        pinched -> END
+        |
+        plugged -> END
+        |
+        empty_fluid -> END
+    )
+),
+
+//when a line is pinched or plugged, alarm will alert.
+//and the line won't flow liquid anymore until the 
+//alarm is lifted.
+LINE_ALARM = (
+    down -> up -> LINE
 ).
 
-||PUMP = (POWER_SYSTEM || SETUP).
+//Semaphore used to control the race condition of ALARM resource.
+SEMAPHORE(I=0)     = SEMA[I],
+SEMA[i:AlarmAmount] = (when(i<AlarmMax) up -> SEMA[i+1]
+                      |when(i>0)        down->SEMA[i-1]
+).
+
+//The entire alarm system
+ALARM_SYS = (
+	l[i:AlarmAmount].down -> SOUND_ALARM[i]
+),
+
+//The sub system of sound alarm.
+SOUND_ALARM[i:AlarmAmount] = (
+     sound_alarm -> (
+        solve_problem -> alarm_lifted -> l[i].up -> ALARM_SYS
+        |
+        skip -> SOUND_ALARM[i]
+        |
+        mute -> SLIENT_ALARM[i]
+     )
+),
+
+//The sub system of slient alarm.
+SLIENT_ALARM[i:AlarmAmount] = (
+    alarm_sliently -> (
+        solve_problem -> alarm_lifted -> l[i].up -> ALARM_SYS
+        |
+        skip -> SLIENT_ALARM[i]
+        |
+        unmute -> SOUND_ALARM[i]
+    )
+).
+
+
+||PUMP = (POWER_SYSTEM || line[LineAmount]:SETUP(ParamsNotSet,ParamsNotSet))
+/{
+    plug_out/line[plug_out:LineAmount].plug_out,
+    ac_power_out/line[ac_power_out:LineAmount].ac_power_out,
+    ac_power_on/line[ac_power_on:LineAmount].ac_power_on,
+    battery_out/line[battery_out:LineAmount].battery_out,
+    battery_on/line[battery_on:LineAmount].battery_on
+}.
+
