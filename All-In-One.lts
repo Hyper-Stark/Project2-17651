@@ -1,0 +1,124 @@
+const PLUGGED_IN = 0
+const PLUGGED_OUT = 1
+range PLUG = PLUGGED_IN..PLUGGED_OUT
+
+const POWER_READY = 0
+const POWER_UNAVAILABLE = 1
+range POWER = POWER_READY..POWER_UNAVAILABLE
+
+const RATE_SET = 0
+const RATE_NOTSET = 1
+range RATE_SETTINGS = RATE_SET..RATE_NOTSET
+
+const SETTING_CONFIRMED = 0
+const SETTING_NOT_CONFIRMED = 1
+range CONFIRM_STATE = SETTING_CONFIRMED..SETTING_NOT_CONFIRMED
+
+const SEMA_UP = 0
+const SEMA_DOWN = 1
+range SEMARANGE = SEMA_UP..SEMA_DOWN
+
+const LINEMAX = 1
+range LINEAMOUNT = 0..LINEMAX
+
+const ALARMMAX = 1
+range ALARMAMOUNT = 0..ALARMMAX
+
+//Power System, coupled with battery
+//the key is "line[LINEAMOUNT].power_on"
+//no matter what kind of power is provided
+//both of two lines can use them 
+//and don't care about which kind of electricty they are using
+POWER_SYS = POWER_SYS[PLUGGED_OUT][POWER_UNAVAILABLE],
+POWER_SYS[plug:PLUG][power:POWER] = (
+    when(plug == PLUGGED_OUT)
+        plug_in -> POWER_SYS[PLUGGED_IN][power]
+    |
+    when(plug == PLUGGED_IN)
+        ac_on -> line[LINEAMOUNT].power_on -> POWER_SYS[plug][power]
+    |
+    when(plug == PLUGGED_IN)
+        plug_out -> battery_check ->(
+            battery_ok -> POWER_SYS[PLUGGED_OUT][POWER_READY]
+            |
+            battery_fail -> POWER_SYS[PLUGGED_OUT][POWER_UNAVAILABLE]
+        )
+    |
+    when(plug == PLUGGED_OUT && power == POWER_READY)
+        battery_on -> line[LINEAMOUNT].power_on -> POWER_SYS[plug][power]
+).
+
+//Line system, coupled with setup system
+//This system just requires power is on, then it runs.
+LINE(A=RATE_NOTSET,B=SETTING_NOT_CONFIRMED) = LINE[A][B],
+LINE[rate:RATE_SETTINGS][state:CONFIRM_STATE] = 
+(
+    power_on -> INFUSION[rate][state]
+),
+
+//After rate is set, then it can pump flow_liquid
+//infusion done means we need to setup a line again
+INFUSION[rate:RATE_SETTINGS][state:CONFIRM_STATE] = (
+    when(rate == RATE_NOTSET && state == SETTING_NOT_CONFIRMED)
+        set_rate -> LINE[RATE_SET][state]
+    |
+    when(rate == RATE_SET && state == SETTING_NOT_CONFIRMED)
+        cancel_settings -> LINE[RATE_NOTSET][SETTING_NOT_CONFIRMED]
+    |
+    when(rate == RATE_SET && state == SETTING_NOT_CONFIRMED)
+        confirm -> LINE[RATE_SET][SETTING_CONFIRMED]
+    |
+    when(rate == RATE_SET && state == SETTING_CONFIRMED)
+        flow_liquid -> LINE[RATE_SET][SETTING_CONFIRMED]
+    |
+    when(rate == RATE_SET && state == SETTING_CONFIRMED)
+        pinched -> LINE_ALARM[rate][state]
+    |
+    when(rate == RATE_SET && state == SETTING_CONFIRMED)
+        plugged -> LINE_ALARM[rate][state]
+    |
+    when(rate == RATE_SET && state == SETTING_CONFIRMED)
+        infusion_done -> LINE[RATE_NOTSET][SETTING_NOT_CONFIRMED]
+),
+
+//line alarm, synchronized with alarm system by "down" and "up" operation
+LINE_ALARM[rate:RATE_SETTINGS][state:CONFIRM_STATE] = (
+    down -> up -> INFUSION[rate][state]
+).
+
+//Semaphore used to control the race condition of ALARM resource.
+SEMAPHORE(I=0)     = SEMA[I],
+SEMA[i:ALARMAMOUNT] = (when(i<ALARMMAX) up -> SEMA[i+1]
+                      |when(i>0)        down->SEMA[i-1]
+).
+
+//The entire alarm system, currently I cannot let this
+//system be interrupted by power failure, may be we can 
+//fix this today
+ALARM_SYS = (
+	line[i:LINEAMOUNT].down -> SOUND_ALARM[i]
+),
+
+//The sub system of sound alarm.
+SOUND_ALARM[i:ALARMAMOUNT] = (
+     sound_alarm -> (
+        solve_problem -> alarm_lifted -> line[i].up -> ALARM_SYS
+        |
+        skip -> SOUND_ALARM[i]
+        |
+        mute -> SLIENT_ALARM[i]
+     )
+),
+
+//The sub system of slient alarm.
+SLIENT_ALARM[i:ALARMAMOUNT] = (
+     slient_alarm -> (
+        solve_problem -> alarm_lifted -> line[i].up -> ALARM_SYS
+        |
+        skip -> SLIENT_ALARM[i]
+        |
+        unmute -> SOUND_ALARM[i]
+     )
+).
+
+||PUMP = (POWER_SYS || line[LINEAMOUNT]:LINE || ALARM_SYS || line[i:LINEAMOUNT]::SEMAPHORE(1)).
