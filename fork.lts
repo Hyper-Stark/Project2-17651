@@ -1,0 +1,24 @@
+const STATE_A = 0
+const STATE_B = 1
+const STATE_C = 2
+
+range STATE = STATE_A..STATE_C
+
+POWER = (
+    power_on -> l[0..1].power_on -> POWER
+    |
+    power_off -> POWER
+).
+
+LINE(S = STATE_A) = LINE[S],
+LINE[s:STATE] = (
+    power_on -> (
+        when(s == STATE_A) do_a -> LINE[STATE_B]
+        |
+        when(s == STATE_B) do_b -> LINE[STATE_C]
+        |
+        when(s == STATE_C) do_c -> LINE[STATE_A]
+    )
+).
+
+||PUMP = (POWER || l[0..1]:LINE).
