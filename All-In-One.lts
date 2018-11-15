@@ -38,7 +38,7 @@ POWER_SYS[plug:PLUG][power:POWER] = (
         ac_on -> line[LINEAMOUNT].power_on -> POWER_SYS[plug][power]
     |
     when(plug == PLUGGED_IN)
-        plug_out -> battery_check ->(
+        {ac_power_failed, plug_out} -> battery_check ->(
             battery_ok -> POWER_SYS[PLUGGED_OUT][POWER_READY]
             |
             battery_fail -> POWER_SYS[PLUGGED_OUT][POWER_UNAVAILABLE]
