@@ -29,7 +29,7 @@ POWER_SYS[plug:PLUG][power:POWER] = (
         ac_on -> power_on -> POWER_SYS[plug][power]
     |
     when(plug == PLUGGED_IN)
-        {ac_power_failed, plug_out} -> battery_check ->(
+        ac_power_failed -> battery_check ->(
             battery_ok -> POWER_SYS[PLUGGED_OUT][POWER_READY]
             |
             battery_fail -> power_off -> POWER_SYS[PLUGGED_OUT][POWER_UNAVAILABLE]
@@ -108,7 +108,7 @@ SLIENT_ALARM[i:ALARMAMOUNT] = (
      )
 ).
 
-||PUMP = (POWER_SYS || line[0..1]:LINE || ALARM_SYS || SEMAPHORE(1))/{
+||PUMP = (POWER_SYS || line[0..1]:LINE || ALARM_SYS || line[0..1]:SEMAPHORE(1))/{
     power_on/line[0..1].power_on,
     power_off/line[0..1].power_off
 }.
