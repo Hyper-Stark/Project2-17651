@@ -1,15 +1,33 @@
+//
+// 17651 Pump
+// Group 7 - Project 2 
+// Li Zhang, Liwen Feng, Jhao-Ting Chen, Rishabh Panwar
+//
+
+//============================================
+//           Constants and Ranges
+//============================================
+
+//state of the power line of a pump, 
+//it can be either plugged in or unplugged
 const PLUGGED_IN = 0
 const PLUGGED_OUT = 1
 range PLUG = PLUGGED_IN..PLUGGED_OUT
 
+//state of the battery of a pump
+//it can be either well-charged or empty
 const BATTERY_BAD = 0
 const BATTERY_GOOD = 1
 range BATTERY_STATE = BATTERY_BAD..BATTERY_GOOD
 
+//state of a pump
+//it can be either on or off
 const ON = 0
 const OFF = 1
 range ON_OFF = ON..OFF
 
+//state of a pump
+//it can be either on or off
 const RATE_SET = 0
 const RATE_UNSET = 1
 range RATES = RATE_SET..RATE_UNSET
@@ -157,9 +175,11 @@ SOUND_ALARM[i:ALARMAMOUNT] = (
 SO_ALARM[i:ALARMAMOUNT][solution_state:SOLU_STATE] = (
     power_off -> ALARM_SYS
     |
-    skip -> SOUND_ALARM[i]
+    when(solution_state == SOLVE)
+        mute -> SLIENT_ALARM[i]
     |
-    mute -> SLIENT_ALARM[i]
+    when(solution_state == SOLVE)
+        skip -> SOUND_ALARM[i]
     |
     when(solution_state == SOLVE)
         solve_problem -> SO_ALARM[i][LIFTED]
@@ -181,9 +201,11 @@ SLIENT_ALARM[i:ALARMAMOUNT] = (
 SL_ALARM[i:ALARMAMOUNT][solution_state:SOLU_STATE] = (
     power_off -> ALARM_SYS
     |
-    skip -> SLIENT_ALARM[i]
+    when(solution_state == SOLVE)
+        unmute -> SOUND_ALARM[i]
     |
-    unmute -> SOUND_ALARM[i]
+    when(solution_state == SOLVE)
+        skip -> SLIENT_ALARM[i]
     |
     when(solution_state == SOLVE)
         solve_problem -> SL_ALARM[i][LIFTED]
