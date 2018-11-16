@@ -9,10 +9,10 @@
 //============================================
 
 //state of the power line of a pump, 
-//it can be either plugged in or ac_failureged
+//it can be either good in or ac_failed
 const RESTORED_AC = 0
 const FAILURE_AC = 1
-range PLUG = RESTORED_AC..FAILURE_AC
+range AC_STATE = RESTORED_AC..FAILURE_AC
 
 //state of the battery of a pump
 //it can be either well-charged or empty
@@ -64,58 +64,59 @@ const MUTEXUP = 2
 range SOLU_STATE = SOLVE..MUTEXUP
 
 //Actions that can be operated by users.
+//Actions that can be operated by users.
 menu UserControlMenu = {
-    line[i:0..1].clear_values, line[i:0..1].confirm_settings, 
-	line[i:0..1].dispense_main_med_flow, line[i:0..1].enter_values, 
-    sound_alarm, ac_restored, ac_failure, line[i:0..1].press_cancel, 
-	line[i:0..1].press_set, line[i:0..1].set_values, silence_alarm,
-	turn_on, turn_off, mute, unmute, solve_problem, alarm_lifted, 
-	line[i:0..1].infusion_done, power_off
+    line[i:LINEAMOUNT].clear_values, line[i:LINEAMOUNT].confirm_settings, 
+	line[i:LINEAMOUNT].dispense_main_med_flow, line[i:LINEAMOUNT].enter_values, 
+    sound_alarm, ac_restored, ac_failure, line[i:LINEAMOUNT].press_cancel, 
+	line[i:LINEAMOUNT].press_set, line[i:LINEAMOUNT].set_values, silence_alarm,
+	turn_on, mute, unmute, solve_problem, alarm_lifted, 
+	line[i:LINEAMOUNT].infusion_done, power_off
 }
 
 //The whole power system. When the power failed, the whole
 //system would shut down immediately, including alarm system
 POWER_SYS = POWER_SYS[RESTORED_AC][BATTERY_GOOD][OFF],
-POWER_SYS[plug:PLUG][btry:BATTERY_STATE][state:ON_OFF] = (
+POWER_SYS[ac:AC_STATE][btry:BATTERY_STATE][state:ON_OFF] = (
     //battery is good, we can turn on the pump
     when(state == OFF && btry == BATTERY_GOOD) 
-        turn_on -> POWER_SYS[plug][btry][ON]
+        turn_on -> POWER_SYS[ac][btry][ON]
     |
     //ac power is good, we can turn on the pump
-    when(state == OFF && plug == RESTORED_AC) 
-        turn_on -> POWER_SYS[plug][btry][ON]
+    when(state == OFF && ac == RESTORED_AC) 
+        turn_on -> POWER_SYS[ac][btry][ON]
     |
-    //plugging in the power line makes ac power be avaiable
-    when(plug == FAILURE_AC) 
+    //ac power be avaiable
+    when(ac == FAILURE_AC) 
         ac_restored -> POWER_SYS[RESTORED_AC][btry][state]
     |
     //the power line will be ac_failureged
-    when(state == ON && plug == RESTORED_AC)
+    when(state == ON && ac == RESTORED_AC)
         ac_failure -> POWER_SYS[FAILURE_AC][btry][state]
     |
     //turn off the pump
-    when(state == ON && plug == RESTORED_AC)
-        turn_off -> power_off -> POWER_SYS[plug][btry][OFF]
+    when(state == ON && ac == RESTORED_AC)
+        power_off -> POWER_SYS[ac][btry][OFF]
     |
     //use ac power
-    when(state == ON && plug == RESTORED_AC)
-        power_on -> POWER_SYS[plug][btry][state]
+    when(state == ON && ac == RESTORED_AC)
+        power_on -> POWER_SYS[ac][btry][state]
     |
     //turn off the pump
-    when(state == ON && btry == BATTERY_GOOD && plug == FAILURE_AC)
-        turn_off -> power_off -> POWER_SYS[plug][btry][OFF]
+    when(state == ON && btry == BATTERY_GOOD && ac == FAILURE_AC)
+       power_off -> POWER_SYS[ac][btry][OFF]
     |
     //use battery
-    when(state == ON && btry == BATTERY_GOOD && plug == FAILURE_AC)
-        power_on -> POWER_SYS[plug][btry][state]
+    when(state == ON && btry == BATTERY_GOOD && ac == FAILURE_AC)
+        power_on -> POWER_SYS[ac][btry][state]
     |
     //battery is going to be used up
-    when(state == ON && btry == BATTERY_GOOD && plug == FAILURE_AC)
-        battery_low -> POWER_SYS[plug][BATTERY_BAD][state]
+    when(state == ON && btry == BATTERY_GOOD && ac == FAILURE_AC)
+        battery_low -> POWER_SYS[ac][BATTERY_BAD][state]
     |
     //lose power
-    when(state == ON && btry == BATTERY_BAD && plug == FAILURE_AC)
-        power_off -> POWER_SYS[plug][btry][OFF]
+    when(state == ON && btry == BATTERY_BAD && ac == FAILURE_AC)
+        power_off -> POWER_SYS[ac][btry][OFF]
 ).
 
 //Line System.
@@ -274,11 +275,11 @@ SL_ALARM[i:ALARMAMOUNT][solution_state:SOLU_STATE] = (
 ).
 
 //fluents and assertions to validate
-fluent PUMPING_ERROR = <line[i: 0..1].dispense_main_med_flow, 
-    {line[i: 0..1].pinched, line[i: 0..1].plugged}>
+fluent PUMPING_ERROR = <line[i: LINEAMOUNT].dispense_main_med_flow, 
+    {line[i: LINEAMOUNT].pinched, line[i: LINEAMOUNT].plugged}>
     
-fluent INFUSE = <line[i: 0..1].done_infusion, 
-    line[i: 0..1].dispense_main_med_flow>
+fluent INFUSE = <line[i: LINEAMOUNT].done_infusion, 
+    line[i: LINEAMOUNT].dispense_main_med_flow>
 
 fluent CONFIRM_SETTINGS = <confirm_settings, cancel_settings>
 fluent POWER = <power_on, power_off>
@@ -286,7 +287,7 @@ fluent POWER_FAIL = <ac_failure, dummy>
 fluent BATTERY = <ac_failure, battery_low>
 fluent PUMPING = <power_off, dummy>
 fluent ALARM_PROBLEM = <solve_problem, sound_alarm>
-fluent PROBLEM_SOLVE = <line[i: 0..1].up,line[i: 0..1].down>
+fluent PROBLEM_SOLVE = <line[i: LINEAMOUNT].up,line[i: LINEAMOUNT].down>
 fluent ALARM = <sound_alarm, silence_alarm>
 
 // assert 1: The pump cannot start pumping without the operator first 
@@ -317,8 +318,8 @@ assert ALARM_SOLVE = [](ALARM_PROBLEM -> <>PROBLEM_SOLVE)
 //the pump, composed by line module, alarm module, 
 // power system, and a semaphore.
 ||PUMP = (
-    POWER_SYS || line[0..1]:LINE || ALARM_SYS || line[0..1]::SEMAPHORE(1)
+    POWER_SYS || line[LINEAMOUNT]:LINE || ALARM_SYS || line[LINEAMOUNT]::SEMAPHORE(1)
 )/{
-    power_on/line[0..1].power_on,
-    power_off/line[0..1].power_off
+    power_on/line[LINEAMOUNT].power_on,
+    power_off/line[LINEAMOUNT].power_off
 }.
