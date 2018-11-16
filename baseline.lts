@@ -2,10 +2,9 @@ const PLUGGED_IN = 0
 const PLUGGED_OUT = 1
 range PLUG = PLUGGED_IN..PLUGGED_OUT
 
-const BATTERY_ON = 0
-const ACPOWER_ON = 1
-const POWER_OFF = 2
-range POWER_STATE = BATTERY_ON..POWER_OFF
+const BATTERY_BAD = 0
+const BATTERY_GOOD = 1
+range BATTERY_STATE = BATTERY_BAD..BATTERY_GOOD
 
 const ON = 0
 const OFF = 1
@@ -25,42 +24,28 @@ range LINEAMOUNT = 0..LINEMAX
 const ALARMMAX = 1
 range ALARMAMOUNT = 0..ALARMMAX
 
-POWER_SYS = POWER_SYS[PLUGGED_IN][POWER_OFF][OFF],
-POWER_SYS[plug:PLUG][power:POWER_STATE][state:ON_OFF] = (
+POWER_SYS = POWER_SYS[PLUGGED_IN][BATTERY_GOOD][OFF],
+POWER_SYS[plug:PLUG][btry:BATTERY_STATE][state:ON_OFF] = (
     when(state == OFF)
-        turn_on -> (
-            when(plug == PLUGGED_OUT)
-                check_battery -> (
-                    battery_available -> POWER_SYS[plug][BATTERY_ON][ON]
-                    |
-                    battery_unavailable -> power_off -> POWER_SYS[plug][POWER_OFF][OFF]
-                )
-            |
-            when(plug == PLUGGED_IN)
-                ac_available -> power_on -> POWER_SYS[plug][ACPOWER_ON][ON]
-        )
+        turn_on -> POWER_SYS[plug][btry][ON]
     |
-    when(state == ON)
-        turn_off -> power_off -> POWER_SYS[plug][POWER_OFF][OFF]
+    when(plug == PLUGGED_OUT)
+        plug_in -> POWER_SYS[PLUGGED_IN][btry][state]
     |
-    when(state == ON && power == BATTERY_ON)
-        power_on -> POWER_SYS[plug][power][state]
+    when(state == ON && plug == PLUGGED_IN)
+        unplug -> POWER_SYS[PLUGGED_OUT][btry][state]
     |
-    when(state == ON && power == BATTERY_ON)
-        plug_in -> POWER_SYS[PLUGGED_IN][ACPOWER_ON][state]
+    when(state == ON && plug == PLUGGED_IN)//use ac power
+        power_on -> POWER_SYS[plug][btry][state]
     |
-    when(state == ON && power == BATTERY_ON)
-        battery_useup -> POWER_SYS[plug][POWER_OFF][OFF]
+    when(state == ON && btry == BATTERY_GOOD && plug == PLUGGED_OUT)//use battery
+        power_on -> POWER_SYS[plug][btry][state]
     |
-    when(state == ON && power == ACPOWER_ON)
-        power_on -> POWER_SYS[plug][power][state]
+    when(state == ON && btry == BATTERY_GOOD && plug == PLUGGED_OUT)//use battery
+        battery_useup -> POWER_SYS[plug][BATTERY_BAD][state]
     |
-    when(state == ON && power == ACPOWER_ON)
-        ac_power_failed -> check_battery -> (
-            battery_available -> POWER_SYS[plug][BATTERY_ON][ON]
-            |
-            battery_unavailable -> power_off -> POWER_SYS[plug][POWER_OFF][OFF]
-        )
+    when(state == ON && btry == BATTERY_BAD && plug == PLUGGED_OUT)//lose power
+        power_off -> POWER_SYS[plug][btry][OFF]
 ).
 
 LINE = (
