@@ -133,14 +133,18 @@ SETUP[rate:RATES][enter:ENTERS][confirm_state:CONFIRMS] = (
         press_cancel -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]//press cancel we can reset
     |
     when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_CONFIRMED)//for the confirm user interface
-        press_set -> INFUSION //pressing set means we can start pump
+        press_set -> INFUSION_INIT //pressing set means we can start pump
 ),
 
 //infusion action
-INFUSION = (
+INFUSION_INIT = (
     power_off -> LINE
     |
-    dispense_main_med_flow -> INFUSION // pump fluids
+    dispense_main_med_flow -> INFUSION//flow the liquid
+),
+
+INFUSION = (
+    power_off -> LINE
     |
     pinched -> LINE_ALARM[SEMA_UP] // line is being pinched
     |
