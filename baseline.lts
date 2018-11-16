@@ -24,6 +24,15 @@ range LINEAMOUNT = 0..LINEMAX
 const ALARMMAX = 1
 range ALARMAMOUNT = 0..ALARMMAX
 
+
+menu UserControlMenu = {
+    change_settings, clear_rate, confirm_settings, connect_set,
+    dispense_main_med_flow, enter_value, erase_and_unlock_line,
+    flow_unblocked, sound_alarm, lock_unit, plug_in, press_cancel, 
+    press_set, set_rate, silence_alarm, turn_off, unlock_unit, unplug,
+    flow_blocked
+}
+
 POWER_SYS = POWER_SYS[PLUGGED_IN][BATTERY_GOOD][OFF],
 POWER_SYS[plug:PLUG][btry:BATTERY_STATE][state:ON_OFF] = (
     when(state == OFF && btry == BATTERY_GOOD)
@@ -73,7 +82,7 @@ SETUP[rate:RATE_SETTINGS][state:CONFIRM_STATE] = (
 INFUSION = (
     power_off -> LINE
     |
-    flow_liquid -> INFUSION
+    dispense_main_med_flow -> INFUSION
     |
     pinched -> LINE_ALARM
     |
@@ -112,7 +121,7 @@ SOUND_ALARM[i:ALARMAMOUNT] = (
 
 //The sub system of slient alarm.
 SLIENT_ALARM[i:ALARMAMOUNT] = (
-     slient_alarm -> (
+     silence_alarm -> (
         solve_problem -> alarm_lifted -> line[i].up -> ALARM_SYS
         |
         skip -> SLIENT_ALARM[i]
