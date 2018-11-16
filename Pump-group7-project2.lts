@@ -305,7 +305,7 @@ assert BATTERY_PUMPING = []( (!POWER && !BATTERY) -> <>PUMPING )
 assert RESUME_PUMPING_AFTER_FAIL = []((POWER || BATTERY) -> <>PUMPING_ERROR)
 
 // assert 5: An alarm will sound on any line failure
-assert ALARM_LINE = []( (!PUMPING) -> <>ALARM )
+assert ALARM_LINE = []( (!PUMPING_ERROR) -> <>ALARM )
 
 // assert 6: In the absence of errors, the pump will continue to pump 
 // until the treatment is finished.
