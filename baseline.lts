@@ -11,12 +11,16 @@ const OFF = 1
 range ON_OFF = ON..OFF
 
 const RATE_SET = 0
-const RATE_NOTSET = 1
-range RATE_SETTINGS = RATE_SET..RATE_NOTSET
+const RATE_UNSET = 1
+range RATES = RATE_SET..RATE_UNSET
+
+const VALUE_ENTERED = 0
+const VALUE_NOTENTERED = 1
+range ENTERS = VALUE_ENTERED..VALUE_NOTENTERED
 
 const SETTING_CONFIRMED = 0
-const SETTING_NOT_CONFIRMED = 1
-range CONFIRM_STATE = SETTING_CONFIRMED..SETTING_NOT_CONFIRMED
+const SETTING_UNCONFIRMED = 1
+range CONFIRMS = SETTING_CONFIRMED..SETTING_UNCONFIRMED
 
 const LINEMAX = 1
 range LINEAMOUNT = 0..LINEMAX
@@ -67,22 +71,31 @@ POWER_SYS[plug:PLUG][btry:BATTERY_STATE][state:ON_OFF] = (
 ).
 
 LINE = (
-    power_on -> SETUP[RATE_NOTSET][SETTING_NOT_CONFIRMED]
+    power_on -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]
     |
     power_off -> LINE
 ),
 
-SETUP[rate:RATE_SETTINGS][state:CONFIRM_STATE] = (
+SETUP[rate:RATES][enter:ENTERS][confirm_state:CONFIRMS] = (
     power_off -> LINE
     |
-    when(rate == RATE_NOTSET && state == SETTING_NOT_CONFIRMED)
-        set_rate -> SETUP[RATE_SET][state]
+    when(rate == RATE_UNSET)
+        set_rate -> SETUP[RATE_SET][enter][confirm_state]
     |
-    when(rate == RATE_SET && state == SETTING_NOT_CONFIRMED)
-        cancel_settings -> SETUP[RATE_NOTSET][SETTING_NOT_CONFIRMED]
+    when(rate == RATE_SET && enter == VALUE_NOTENTERED)
+        enter_value -> SETUP[rate][VALUE_ENTERED][confirm_state]
     |
-    when(rate == RATE_SET && state == SETTING_NOT_CONFIRMED)
-        confirm_settings -> INFUSION
+    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)
+        clear_rate -> SETUP[rate][VALUE_NOTENTERED][confirm_state]
+    |
+    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)
+        confirm_settings -> SETUP[rate][enter][SETTING_CONFIRMED]
+    |
+    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_CONFIRMED)
+        press_cancel -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]
+    |
+    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_CONFIRMED)
+        press_set -> INFUSION
 ),
 
 INFUSION = (
@@ -94,7 +107,7 @@ INFUSION = (
     |
     plugged -> LINE_ALARM
     |
-    infusion_done -> SETUP[RATE_NOTSET][SETTING_NOT_CONFIRMED]
+    infusion_done -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]
 ),
 
 LINE_ALARM = (
