@@ -104,7 +104,7 @@ POWER_SYS[ac:AC_STATE][btry:BATTERY_STATE][state:ON_OFF] = (
     |
     //turn off the pump
     when(state == ON && btry == BATTERY_GOOD && ac == FAILURE_AC)
-       power_off -> POWER_SYS[ac][btry][OFF]
+        power_off -> POWER_SYS[ac][btry][OFF]
     |
     //use battery
     when(state == ON && btry == BATTERY_GOOD && ac == FAILURE_AC)
