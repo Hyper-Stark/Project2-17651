@@ -9,10 +9,10 @@
 //============================================
 
 //state of the power line of a pump, 
-//it can be either good in or ac_failed
+//it can be either plugged in or ac_failureged
 const RESTORED_AC = 0
 const FAILURE_AC = 1
-range AC_STATE = RESTORED_AC..FAILURE_AC
+range PLUG = RESTORED_AC..FAILURE_AC
 
 //state of the battery of a pump
 //it can be either well-charged or empty
@@ -65,55 +65,57 @@ range SOLU_STATE = SOLVE..MUTEXUP
 
 //Actions that can be operated by users.
 menu UserControlMenu = {
-    clear_values, confirm_settings, dispense_main_med_flow, enter_values, 
-    sound_alarm, ac_restored, ac_failure, press_cancel, press_set, set_values, 
-    silence_alarm, turn_on, turn_off, mute, unmute, solve_problem, 
-    alarm_lifted, plugged, pinched, infusion_done
+    line[i:0..1].clear_values, line[i:0..1].confirm_settings, 
+	line[i:0..1].dispense_main_med_flow, line[i:0..1].enter_values, 
+    sound_alarm, ac_restored, ac_failure, line[i:0..1].press_cancel, 
+	line[i:0..1].press_set, line[i:0..1].set_values, silence_alarm,
+	turn_on, turn_off, mute, unmute, solve_problem, alarm_lifted, 
+	line[i:0..1].infusion_done, power_off
 }
 
 //The whole power system. When the power failed, the whole
 //system would shut down immediately, including alarm system
 POWER_SYS = POWER_SYS[RESTORED_AC][BATTERY_GOOD][OFF],
-POWER_SYS[ac:AC_STATE][btry:BATTERY_STATE][state:ON_OFF] = (
+POWER_SYS[plug:PLUG][btry:BATTERY_STATE][state:ON_OFF] = (
     //battery is good, we can turn on the pump
     when(state == OFF && btry == BATTERY_GOOD) 
-        turn_on -> POWER_SYS[ac][btry][ON]
+        turn_on -> POWER_SYS[plug][btry][ON]
     |
     //ac power is good, we can turn on the pump
-    when(state == OFF && ac == RESTORED_AC) 
-        turn_on -> POWER_SYS[ac][btry][ON]
+    when(state == OFF && plug == RESTORED_AC) 
+        turn_on -> POWER_SYS[plug][btry][ON]
     |
-    //ac power be avaiable
-    when(ac == FAILURE_AC) 
+    //plugging in the power line makes ac power be avaiable
+    when(plug == FAILURE_AC) 
         ac_restored -> POWER_SYS[RESTORED_AC][btry][state]
     |
     //the power line will be ac_failureged
-    when(state == ON && ac == RESTORED_AC)
+    when(state == ON && plug == RESTORED_AC)
         ac_failure -> POWER_SYS[FAILURE_AC][btry][state]
     |
     //turn off the pump
-    when(state == ON && ac == RESTORED_AC)
-        turn_off -> power_off -> POWER_SYS[ac][btry][OFF]
+    when(state == ON && plug == RESTORED_AC)
+        turn_off -> power_off -> POWER_SYS[plug][btry][OFF]
     |
     //use ac power
-    when(state == ON && ac == RESTORED_AC)
-        power_on -> POWER_SYS[ac][btry][state]
+    when(state == ON && plug == RESTORED_AC)
+        power_on -> POWER_SYS[plug][btry][state]
     |
     //turn off the pump
-    when(state == ON && btry == BATTERY_GOOD && ac == FAILURE_AC)
-        turn_off -> power_off -> POWER_SYS[ac][btry][OFF]
+    when(state == ON && btry == BATTERY_GOOD && plug == FAILURE_AC)
+        turn_off -> power_off -> POWER_SYS[plug][btry][OFF]
     |
     //use battery
-    when(state == ON && btry == BATTERY_GOOD && ac == FAILURE_AC)
-        power_on -> POWER_SYS[ac][btry][state]
+    when(state == ON && btry == BATTERY_GOOD && plug == FAILURE_AC)
+        power_on -> POWER_SYS[plug][btry][state]
     |
     //battery is going to be used up
-    when(state == ON && btry == BATTERY_GOOD && ac == FAILURE_AC)
-        battery_low -> POWER_SYS[ac][BATTERY_BAD][state]
+    when(state == ON && btry == BATTERY_GOOD && plug == FAILURE_AC)
+        battery_low -> POWER_SYS[plug][BATTERY_BAD][state]
     |
     //lose power
-    when(state == ON && btry == BATTERY_BAD && ac == FAILURE_AC)
-        power_off -> POWER_SYS[ac][btry][OFF]
+    when(state == ON && btry == BATTERY_BAD && plug == FAILURE_AC)
+        power_off -> POWER_SYS[plug][btry][OFF]
 ).
 
 //Line System.
