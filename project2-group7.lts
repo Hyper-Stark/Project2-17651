@@ -289,6 +289,7 @@ fluent PUMPING = <power_off, dummy>
 fluent ALARM_PROBLEM = <solve_problem, sound_alarm>
 fluent PROBLEM_SOLVE = <line[i: LINEAMOUNT].up,line[i: LINEAMOUNT].down>
 fluent ALARM = <sound_alarm, silence_alarm>
+fluent CRITICAL[LINEAMOUNT] = <line[LINEAMOUNT].down, line[LINEAMOUNT].up>
 
 // assert 1: The pump cannot start pumping without the operator first 
 // confirming the settings on the pump.
@@ -315,6 +316,10 @@ assert PUMP_UNTIL_TREATMENT_FINISHED = <>([]PUMPING_ERROR U INFUSE)
 // solved before the normal process continues.
 assert ALARM_SOLVE = [](ALARM_PROBLEM -> <>PROBLEM_SOLVE)
 
+// assert 9: The alarm can only sound for one failure and the 
+// next problem has to wait for the alarm to be released.
+assert MUTEX = []!(CRITICAL[0] && CRITICAL[1])
+
 //the pump, composed by line module, alarm module, 
 // power system, and a semaphore.
 ||PUMP = (
@@ -326,3 +331,4 @@ assert ALARM_SOLVE = [](ALARM_PROBLEM -> <>PROBLEM_SOLVE)
     power_on/line[LINEAMOUNT].power_on,
     power_off/line[LINEAMOUNT].power_off
 }.
+
