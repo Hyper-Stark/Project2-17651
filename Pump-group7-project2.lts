@@ -117,16 +117,16 @@ LINE = (
 SETUP[rate:RATES][enter:ENTERS][confirm_state:CONFIRMS] = (
     power_off -> LINE
     |
-    when(rate == RATE_UNSET)//first set the rate
+    when(rate == RATE_UNSET)//first we need to click "set values"
         set_values -> SETUP[RATE_SET][enter][confirm_state]
     |
-    when(rate == RATE_SET && enter == VALUE_NOTENTERED)//then enter a value
+    when(rate == RATE_SET && enter == VALUE_NOTENTERED)//then enter values
         enter_values -> SETUP[rate][VALUE_ENTERED][confirm_state]
     |
-    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)//then we can clear the value
+    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)//then we can clear the values
         clear_values -> SETUP[rate][VALUE_NOTENTERED][confirm_state]
     |
-    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)//or we can confirm the value
+    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)//or we can confirm the values
         confirm_settings -> SETUP[rate][enter][SETTING_CONFIRMED]
     |
     when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_CONFIRMED)//for the confirm user interface
@@ -257,7 +257,6 @@ assert BATTERY_PUMPING = []( (!POWER && !BATTERY) -> <>PUMPING )
 
 // assert 4: It is always possible to resume pumping after a failure.
 assert RESUME_PUMPING_AFTER_FAIL = []((POWER || BATTERY) -> <>PUMPING_ERROR)
-
 
 // assert 5: An alarm will sound on any line failure
 assert ALARM_LINE = []( (!PUMPING) -> <>ALARM )
