@@ -237,6 +237,37 @@ SL_ALARM[i:ALARMAMOUNT][solution_state:SOLU_STATE] = (
         line[i].up -> ALARM_SYS
 ).
 
+//fluents and assertions to validate
+fluent CONFIRM_SETTINGS = <confirm_settings, cancel_settings>
+fluent PUMPING_ERROR = <line[i: 0..1].dispense_main_med_flow, {line[i: 0..1].pinched, line[i: 0..1].plugged}>
+fluent INFUSE = <line[i: 0..1].done_infusion, line[i: 0..1].dispense_main_med_flow>
+fluent POWER = <power_on, power_off>
+fluent BATTERY = <unplug, battery_low>
+fluent PUMPING = <power_off, dummy>
+fluent ALARM_PROBLEM = <solve_problem, sound_alarm>
+fluent PROBLEM_SOLVE = <line[i: 0..1].up,line[i: 0..1].down>
+fluent ALARM = <sound_alarm, silence_alarm>
+
+
+// assert 1: The pump cannot start pumping without the operator first confirming the settings on the pump.
+assert CONFIRM_THEN_PUMP = [](CONFIRM_SETTINGS -> <>PUMPING_ERROR) 
+
+// assert 3:If the power system fails and the backup battery power both fails, pumping will not occur on any line. 
+assert BATTERY_PUMPING = []( (!POWER && !BATTERY) -> <>PUMPING )
+
+// assert 4: It is always possible to resume pumping after a failure.
+assert RESUME_PUMPING_AFTER_FAIL = []((POWER || BATTERY) -> <>PUMPING_ERROR)
+
+
+// assert 5: An alarm will sound on any line failure
+assert ALARM_LINE = []( (!PUMPING) -> <>ALARM )
+
+// assert 6: In the absence of errors, the pump will continue to pump until the treatment is finished.
+assert PUMP_UNTIL_TREATMENT_FINISHED = <>([]PUMPING_ERROR U INFUSE)
+
+// assert 8: The condition causing the alarm will have to be solved before the normal process continues.
+assert ALARM_SOLVE = [](ALARM_PROBLEM -> <>PROBLEM_SOLVE)
+
 //the pump, composed by line module, alarm module, power system, and a semaphore.
 ||PUMP = (POWER_SYS || line[0..1]:LINE || ALARM_SYS || line[0..1]::SEMAPHORE(1))/{
     power_on/line[0..1].power_on,
