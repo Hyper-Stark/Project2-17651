@@ -26,7 +26,10 @@ range ALARMAMOUNT = 0..ALARMMAX
 
 POWER_SYS = POWER_SYS[PLUGGED_IN][BATTERY_GOOD][OFF],
 POWER_SYS[plug:PLUG][btry:BATTERY_STATE][state:ON_OFF] = (
-    when(state == OFF)
+    when(state == OFF && btry == BATTERY_GOOD)
+        turn_on -> POWER_SYS[plug][btry][ON]
+    |
+    when(state == OFF && plug == PLUGGED_IN)
         turn_on -> POWER_SYS[plug][btry][ON]
     |
     when(plug == PLUGGED_OUT)
