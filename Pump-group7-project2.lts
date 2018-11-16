@@ -26,58 +26,68 @@ const ON = 0
 const OFF = 1
 range ON_OFF = ON..OFF
 
-//state of a pump
-//it can be either on or off
+//state of the rate of a pump
+//it can be either set or unset
 const RATE_SET = 0
 const RATE_UNSET = 1
 range RATES = RATE_SET..RATE_UNSET
 
+//state of whether the rate value is enterred or not
 const VALUE_ENTERED = 0
 const VALUE_NOTENTERED = 1
 range ENTERS = VALUE_ENTERED..VALUE_NOTENTERED
 
+//state of whether the settings are confirmed or not
 const SETTING_CONFIRMED = 0
 const SETTING_UNCONFIRMED = 1
 range CONFIRMS = SETTING_CONFIRMED..SETTING_UNCONFIRMED
 
+//we just have two lines: line.0 and line.1
 const LINEMAX = 1
 range LINEAMOUNT = 0..LINEMAX
 
+//we just have one alarm
 const ALARMMAX = 1
 range ALARMAMOUNT = 0..ALARMMAX
 
+//the state is used to remember whether the 
+//down action or up action has been executed or not
 const SEMA_UP = 0
 const SEMA_DOWN = 1
 range SEMA_STATE = SEMA_UP..SEMA_DOWN
 
+//the state of the solution for a problem which raised alarm
+//solve -> alarm_lifted -> semaphore up
 const SOLVE = 0
 const LIFTED = 1
 const MUTEXUP = 2
 range SOLU_STATE = SOLVE..MUTEXUP
 
+//Actions that can be operated by users.
 menu UserControlMenu = {
-    change_settings, clear_rate, confirm_settings, connect_set,
-    dispense_main_med_flow, enter_value, erase_and_unlock_line,
-    flow_unblocked, sound_alarm, lock_unit, plug_in, press_cancel, 
-    press_set, set_rate, silence_alarm, turn_off, unlock_unit, unplug,
-    flow_blocked
+    clear_rate, confirm_settings, dispense_main_med_flow, enter_value, 
+    sound_alarm, plug_in, unplug, press_cancel, press_set, set_rate, 
+    silence_alarm, turn_on, turn_off, mute, unmute, solve_problem, 
+    alarm_lifted, plugged, pinched, infusion_done
 }
 
+//The whole power system. When the power failed, the whole
+//system would shut down immediately, including alarm system
 POWER_SYS = POWER_SYS[PLUGGED_IN][BATTERY_GOOD][OFF],
 POWER_SYS[plug:PLUG][btry:BATTERY_STATE][state:ON_OFF] = (
-    when(state == OFF && btry == BATTERY_GOOD)
+    when(state == OFF && btry == BATTERY_GOOD) //battery is good, we can turn on the pump
         turn_on -> POWER_SYS[plug][btry][ON]
     |
-    when(state == OFF && plug == PLUGGED_IN)
+    when(state == OFF && plug == PLUGGED_IN) //ac power is good, we can turn on the pump
         turn_on -> POWER_SYS[plug][btry][ON]
     |
-    when(plug == PLUGGED_OUT)
+    when(plug == PLUGGED_OUT) //plugging in the power line makes ac power be avaiable
         plug_in -> POWER_SYS[PLUGGED_IN][btry][state]
     |
-    when(state == ON && plug == PLUGGED_IN)
+    when(state == ON && plug == PLUGGED_IN)//the power line will be unplugged
         unplug -> POWER_SYS[PLUGGED_OUT][btry][state]
     |
-    when(state == ON && plug == PLUGGED_IN)//turn off the power
+    when(state == ON && plug == PLUGGED_IN)//turn off the pump
         turn_off -> power_off -> POWER_SYS[plug][btry][OFF]
     |
     when(state == ON && plug == PLUGGED_IN)//use ac power
@@ -96,46 +106,52 @@ POWER_SYS[plug:PLUG][btry:BATTERY_STATE][state:ON_OFF] = (
         power_off -> POWER_SYS[plug][btry][OFF]
 ).
 
+//Line System.
 LINE = (
-    power_on -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]
+    power_on -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]//if power is on, we can setup settings for lines
     |
     power_off -> LINE
 ),
 
+//set settings for each individual line
 SETUP[rate:RATES][enter:ENTERS][confirm_state:CONFIRMS] = (
     power_off -> LINE
     |
-    when(rate == RATE_UNSET)
+    when(rate == RATE_UNSET)//first set the rate
         set_rate -> SETUP[RATE_SET][enter][confirm_state]
     |
-    when(rate == RATE_SET && enter == VALUE_NOTENTERED)
+    when(rate == RATE_SET && enter == VALUE_NOTENTERED)//then enter a value
         enter_value -> SETUP[rate][VALUE_ENTERED][confirm_state]
     |
-    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)
+    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)//then we can clear the value
         clear_rate -> SETUP[rate][VALUE_NOTENTERED][confirm_state]
     |
-    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)
+    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)//or we can confirm the value
         confirm_settings -> SETUP[rate][enter][SETTING_CONFIRMED]
     |
-    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_CONFIRMED)
-        press_cancel -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]
+    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_CONFIRMED)//for the confirm user interface
+        press_cancel -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]//press cancel we can reset
     |
-    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_CONFIRMED)
-        press_set -> INFUSION
+    when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_CONFIRMED)//for the confirm user interface
+        press_set -> INFUSION //pressing set means we can start pump
 ),
 
+//infusion action
 INFUSION = (
     power_off -> LINE
     |
-    dispense_main_med_flow -> INFUSION
+    dispense_main_med_flow -> INFUSION // pump fluids
     |
-    pinched -> LINE_ALARM[SEMA_UP]
+    pinched -> LINE_ALARM[SEMA_UP] // line is being pinched
     |
-    plugged -> LINE_ALARM[SEMA_UP]
+    plugged -> LINE_ALARM[SEMA_UP] // line is being plugged
     |
-    infusion_done -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]
+    infusion_done -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]//we finished the infusion, set up again
 ),
 
+//pinch or plug action will trigger line alarm action
+//the down and up action were synchronized with the semaphore
+//because they need to race to get the only one alarm resource
 LINE_ALARM[sema:SEMA_STATE] = (
     power_off -> LINE
     |
@@ -156,9 +172,7 @@ SEMA[i:ALARMAMOUNT] = (
     when(i>0)        down->SEMA[i-1]
 ).
 
-//The entire alarm system, currently I cannot let this
-//system be interrupted by power failure, may be we can 
-//fix this today
+//alarm system
 ALARM_SYS = (
     power_off -> ALARM_SYS
     |
@@ -172,6 +186,7 @@ SOUND_ALARM[i:ALARMAMOUNT] = (
     sound_alarm -> SO_ALARM[i][SOLVE]
 ),
 
+//when the alarm sounded, it can be muted, keep sounding, or the problem can be solved.
 SO_ALARM[i:ALARMAMOUNT][solution_state:SOLU_STATE] = (
     power_off -> ALARM_SYS
     |
@@ -191,13 +206,14 @@ SO_ALARM[i:ALARMAMOUNT][solution_state:SOLU_STATE] = (
         line[i].up -> ALARM_SYS
 ),
 
-//The sub system of slient alarm.
+//The sub system of slience alarm.
 SLIENT_ALARM[i:ALARMAMOUNT] = (
     power_off -> ALARM_SYS
     |
     silence_alarm -> SL_ALARM[i][SOLVE]
 ),
 
+//when the alarm sliently alarmed, it could be muted, keep sounding, or the problem can be solved, 
 SL_ALARM[i:ALARMAMOUNT][solution_state:SOLU_STATE] = (
     power_off -> ALARM_SYS
     |
@@ -217,7 +233,7 @@ SL_ALARM[i:ALARMAMOUNT][solution_state:SOLU_STATE] = (
         line[i].up -> ALARM_SYS
 ).
 
-
+//the pump, composed by line module, alarm module, power system, and a semaphore.
 ||PUMP = (POWER_SYS || line[0..1]:LINE || ALARM_SYS || line[0..1]::SEMAPHORE(1))/{
     power_on/line[0..1].power_on,
     power_off/line[0..1].power_off
