@@ -81,7 +81,7 @@ SETUP[rate:RATE_SETTINGS][state:CONFIRM_STATE] = (
 ),
 
 INFUSION = (
-    power_off -> INFUSION
+    power_off -> LINE
     |
     flow_liquid -> INFUSION
     |
