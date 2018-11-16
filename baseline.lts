@@ -47,13 +47,19 @@ POWER_SYS[plug:PLUG][btry:BATTERY_STATE][state:ON_OFF] = (
     when(state == ON && plug == PLUGGED_IN)
         unplug -> POWER_SYS[PLUGGED_OUT][btry][state]
     |
+    when(state == ON && plug == PLUGGED_IN)//turn off the power
+        turn_off -> POWER_SYS[plug][btry][OFF]
+    |
     when(state == ON && plug == PLUGGED_IN)//use ac power
         power_on -> POWER_SYS[plug][btry][state]
     |
+    when(state == ON && btry == BATTERY_GOOD && plug == PLUGGED_OUT)//turn off the pump
+        turn_off -> POWER_SYS[plug][btry][OFF]
+    |
     when(state == ON && btry == BATTERY_GOOD && plug == PLUGGED_OUT)//use battery
         power_on -> POWER_SYS[plug][btry][state]
     |
-    when(state == ON && btry == BATTERY_GOOD && plug == PLUGGED_OUT)//use battery
+    when(state == ON && btry == BATTERY_GOOD && plug == PLUGGED_OUT)//battery is going to be used up
         battery_low -> POWER_SYS[plug][BATTERY_BAD][state]
     |
     when(state == ON && btry == BATTERY_BAD && plug == PLUGGED_OUT)//lose power
