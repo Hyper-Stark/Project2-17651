@@ -28,6 +28,14 @@ range LINEAMOUNT = 0..LINEMAX
 const ALARMMAX = 1
 range ALARMAMOUNT = 0..ALARMMAX
 
+const SEMA_UP = 0
+const SEMA_DOWN = 1
+range SEMA_STATE = SEMA_UP..SEMA_DOWN
+
+const SOLVE = 0
+const LIFTED = 1
+const MUTEXUP = 2
+range SOLU_STATE = SOLVE..MUTEXUP
 
 menu UserControlMenu = {
     change_settings, clear_rate, confirm_settings, connect_set,
@@ -103,51 +111,90 @@ INFUSION = (
     |
     dispense_main_med_flow -> INFUSION
     |
-    pinched -> LINE_ALARM
+    pinched -> LINE_ALARM[SEMA_UP]
     |
-    plugged -> LINE_ALARM
+    plugged -> LINE_ALARM[SEMA_UP]
     |
     infusion_done -> SETUP[RATE_UNSET][VALUE_NOTENTERED][SETTING_UNCONFIRMED]
 ),
 
-LINE_ALARM = (
-    down -> up -> INFUSION
+LINE_ALARM[sema:SEMA_STATE] = (
+    power_off -> LINE
+    |
+    when(sema == SEMA_UP)
+        down -> LINE_ALARM[SEMA_DOWN]
+    |
+    when(sema == SEMA_DOWN)
+        up -> INFUSION
 ).
 
 //Semaphore used to control the race condition of ALARM resource.
 SEMAPHORE(I=0)     = SEMA[I],
-SEMA[i:ALARMAMOUNT] = (when(i<ALARMMAX) up -> SEMA[i+1]
-                      |when(i>0)        down->SEMA[i-1]
+SEMA[i:ALARMAMOUNT] = (
+    power_off -> SEMA[ALARMMAX]
+    |
+    when(i<ALARMMAX) up -> SEMA[i+1]         
+    |
+    when(i>0)        down->SEMA[i-1]
 ).
 
 //The entire alarm system, currently I cannot let this
 //system be interrupted by power failure, may be we can 
 //fix this today
 ALARM_SYS = (
+    power_off -> ALARM_SYS
+    |
 	line[i:LINEAMOUNT].down -> SOUND_ALARM[i]
 ),
 
 //The sub system of sound alarm.
 SOUND_ALARM[i:ALARMAMOUNT] = (
-     sound_alarm -> (
-        solve_problem -> alarm_lifted -> line[i].up -> ALARM_SYS
-        |
-        skip -> SOUND_ALARM[i]
-        |
-        mute -> SLIENT_ALARM[i]
-     )
+    power_off -> ALARM_SYS
+    |
+    sound_alarm -> SO_ALARM[i][SOLVE]
+),
+
+SO_ALARM[i:ALARMAMOUNT][solution_state:SOLU_STATE] = (
+    power_off -> ALARM_SYS
+    |
+    skip -> SOUND_ALARM[i]
+    |
+    mute -> SLIENT_ALARM[i]
+    |
+    when(solution_state == SOLVE)
+        solve_problem -> SO_ALARM[i][LIFTED]
+    |
+    when(solution_state == LIFTED)
+        alarm_lifted -> SO_ALARM[i][MUTEXUP]
+    |
+    when(solution_state == MUTEXUP)
+        line[i].up -> ALARM_SYS
 ),
 
 //The sub system of slient alarm.
 SLIENT_ALARM[i:ALARMAMOUNT] = (
-     silence_alarm -> (
-        solve_problem -> alarm_lifted -> line[i].up -> ALARM_SYS
-        |
-        skip -> SLIENT_ALARM[i]
-        |
-        unmute -> SOUND_ALARM[i]
-     )
+    power_off -> ALARM_SYS
+    |
+    silence_alarm -> SL_ALARM[i][SOLVE]
+),
+
+SL_ALARM[i:ALARMAMOUNT][solution_state:SOLU_STATE] = (
+    power_off -> ALARM_SYS
+    |
+    skip -> SLIENT_ALARM[i]
+    |
+    unmute -> SOUND_ALARM[i]
+    |
+    when(solution_state == SOLVE)
+        solve_problem -> SL_ALARM[i][LIFTED]
+    |
+    when(solution_state == LIFTED)
+        alarm_lifted -> SL_ALARM[i][MUTEXUP]
+    |
+    when(solution_state == MUTEXUP)
+        line[i].up -> ALARM_SYS
 ).
+
 
 ||PUMP = (POWER_SYS || line[0..1]:LINE || ALARM_SYS || line[0..1]::SEMAPHORE(1))/{
     power_on/line[0..1].power_on,
