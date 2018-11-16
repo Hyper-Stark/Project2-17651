@@ -318,7 +318,10 @@ assert ALARM_SOLVE = [](ALARM_PROBLEM -> <>PROBLEM_SOLVE)
 //the pump, composed by line module, alarm module, 
 // power system, and a semaphore.
 ||PUMP = (
-    POWER_SYS || line[LINEAMOUNT]:LINE || ALARM_SYS || line[LINEAMOUNT]::SEMAPHORE(1)
+    POWER_SYS ||
+    line[LINEAMOUNT]:LINE || 
+    ALARM_SYS || 
+    line[LINEAMOUNT]::SEMAPHORE(1)
 )/{
     power_on/line[LINEAMOUNT].power_on,
     power_off/line[LINEAMOUNT].power_off
