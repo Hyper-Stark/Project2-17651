@@ -65,8 +65,8 @@ range SOLU_STATE = SOLVE..MUTEXUP
 
 //Actions that can be operated by users.
 menu UserControlMenu = {
-    clear_rate, confirm_settings, dispense_main_med_flow, enter_value, 
-    sound_alarm, plug_in, unplug, press_cancel, press_set, set_rate, 
+    clear_values, confirm_settings, dispense_main_med_flow, enter_values, 
+    sound_alarm, plug_in, unplug, press_cancel, press_set, set_values, 
     silence_alarm, turn_on, turn_off, mute, unmute, solve_problem, 
     alarm_lifted, plugged, pinched, infusion_done
 }
@@ -118,13 +118,13 @@ SETUP[rate:RATES][enter:ENTERS][confirm_state:CONFIRMS] = (
     power_off -> LINE
     |
     when(rate == RATE_UNSET)//first set the rate
-        set_rate -> SETUP[RATE_SET][enter][confirm_state]
+        set_values -> SETUP[RATE_SET][enter][confirm_state]
     |
     when(rate == RATE_SET && enter == VALUE_NOTENTERED)//then enter a value
-        enter_value -> SETUP[rate][VALUE_ENTERED][confirm_state]
+        enter_values -> SETUP[rate][VALUE_ENTERED][confirm_state]
     |
     when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)//then we can clear the value
-        clear_rate -> SETUP[rate][VALUE_NOTENTERED][confirm_state]
+        clear_values -> SETUP[rate][VALUE_NOTENTERED][confirm_state]
     |
     when(rate == RATE_SET && enter == VALUE_ENTERED && confirm_state == SETTING_UNCONFIRMED)//or we can confirm the value
         confirm_settings -> SETUP[rate][enter][SETTING_CONFIRMED]
